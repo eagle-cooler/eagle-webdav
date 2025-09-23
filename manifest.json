@@ -1,16 +1,17 @@
 {
-  "id": "870e7d2e-a37a-4f67-997a-0b43f849217e",
+  "id": "7e4dd5eb-fc2d-4733-afea-ff33852faa8c",
   "version": "1.0.0",
   "platform": "all",
   "arch": "all",
-  "name": "eagle-plugin-vite-react-ts",
-  "description": "Vite React TypeScript TailwindCss template for Eagle Plugin.",
+  "name": "Eagle WebDAV Server",
+  "description": "Expose your Eagle library through WebDAV protocol for remote access and synchronization.",
   "logo": "/dist/vite.svg",
-  "keywords": ["template"],
-  "devTools": false,
+  "keywords": ["webdav", "server", "remote", "sync", "access"],
+  "devTools": true,
   "main": {
+    "serviceMode": true,
     "url": "dist/index.html",
     "width": 768,
-    "height": 450
+    "height": 600
   }
 }
