@@ -164,6 +164,7 @@ declare global {
           | 'panoramic-landscape';
       }): Promise<Item[]>;
       getAll(): Promise<Item[]>;
+      countAll(): Promise<number>;
       getById(itemId: string): Promise<Item>;
       getByIds(itemIds: string[]): Promise<Item[]>;
       getSelected(): Promise<Item[]>;

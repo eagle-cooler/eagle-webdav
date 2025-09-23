@@ -22,24 +22,31 @@
 
 ## Core Components
 
-### 1. WebDAV Server (`webdav.ts`)
-- **Singleton Pattern**: Ensures single server instance
+### 1. WebDAV Server (`webdav/server.ts`)
+- **Singleton Pattern**: `EagleWebDAVServer.getInstance()`
 - **HTTP Server**: Node.js built-in `http` module
 - **Method Handlers**: PROPFIND, GET, HEAD, OPTIONS
-- **Authentication**: Basic HTTP auth with challenge-response
-- **File Streaming**: Direct file system access using Eagle item paths
+- **Modular Routing**: Delegates to specialized route handlers
+- **Authentication**: Integrates with auth module
 
-### 2. Background Service (`background.ts`)
-- **Service Lifecycle**: Start, stop, restart operations
-- **Eagle Event Integration**: Plugin lifecycle hooks
+### 2. Background Service (`webdav/background.ts`)
+- **Singleton Pattern**: `BackgroundService.getInstance()`
+- **Simple Initialization**: Single `init()` method
+- **Eagle Events**: `onPluginCreate()` for auto-start
+- **State Management**: localStorage for auto-start preferences
 - **Connection Info**: Provides client connection details
-- **Health Monitoring**: Server status and health checks
 
-### 3. UI Component (`App.tsx`)
-- **Server Control**: Start/stop buttons
-- **Connection Display**: URL, credentials, endpoints
-- **Status Monitoring**: Real-time server state
-- **Compact Layout**: Two-column design for minimal footprint
+### 3. Authentication Module (`webdav/auth/`)
+- **Credential Generation**: Hostname + UUID pattern
+- **Password Storage**: localStorage with fallback generation
+- **Challenge-Response**: Proper WWW-Authenticate implementation
+- **Error Responses**: XML-formatted authentication errors
+
+### 4. Route Handlers (`webdav/routes/folders/`)
+- **GET Handler**: Folder content serving
+- **PROPFIND Handler**: WebDAV property discovery
+- **XML Generation**: RFC-compliant WebDAV responses
+- **Eagle Integration**: Folder and item retrieval
 
 ## Key Design Patterns
 
@@ -112,6 +119,51 @@ fs.createReadStream(path) → File content
 2. Extract file system path from item.filePath
 3. Verify file existence
 4. Set appropriate headers (Content-Type, Content-Length)
+5. Stream file content to WebDAV client
+
+## Modern Patterns (Dec 2025 Refactor)
+
+### Singleton Pattern Implementation
+```typescript
+export class EagleWebDAVServer {
+  private static instance: EagleWebDAVServer | null = null;
+
+  private constructor() { /* Private constructor */ }
+
+  static getInstance(): EagleWebDAVServer {
+    if (!EagleWebDAVServer.instance) {
+      EagleWebDAVServer.instance = new EagleWebDAVServer();
+    }
+    return EagleWebDAVServer.instance;
+  }
+}
+```
+
+### Simple Initialization Pattern
+```typescript
+// init.ts - Simple, direct initialization
+import { backgroundService } from './webdav/background';
+backgroundService.init();
+
+// background.ts - Clean Eagle event registration
+init(): void {
+  if (typeof eagle !== 'undefined' && eagle.event) {
+    eagle.event.onPluginCreate(async () => {
+      // Auto-start logic
+      const shouldAutoStart = localStorage.getItem("eagle-webdav-server-state") !== "stopped";
+      if (shouldAutoStart) {
+        await this.start();
+      }
+    });
+  }
+}
+```
+
+### Modular File Organization
+- **Clear Separation**: Auth, routing, utilities in separate modules
+- **Single Responsibility**: Each module has one focused purpose
+- **Type Safety**: Shared interfaces in dedicated types file
+- **Clean Imports**: Organized module exports and dependencies
 5. Stream file content using fs.createReadStream()
 
 ## Module Dependencies

@@ -1,28 +1,10 @@
 // Initialize the Eagle WebDAV background service
 
-import { backgroundService } from './services/background';
-import { eagleWebDAVServer } from './services/webdav';
+import { backgroundService } from './webdav/background';
 
-
-// This file ensures the background service is initialized when the plugin loads
-
-// Safe initialization - check if Eagle is available
-const initializeService = async () => {
-    try {
-    if (typeof eagle !== 'undefined') {
-            await backgroundService.ensureInitialized();
-          } else {
-      console.warn('Eagle API not available during initialization');
-    }
-  } catch (error) {
-    console.error('Failed to initialize background service:', error);
-  }
-};
-
-// Initialize when the module loads
-initializeService();
-
+// Simple initialization
+console.log('[DEBUG] init.ts - Initializing background service...');
+backgroundService.init();
 
 // Export for external access
 export { backgroundService };
-export { eagleWebDAVServer };

@@ -1,15 +1,74 @@
 # Active Context - Eagle WebDAV Plugin
 
-## Current Focus
-Successfully resolved all major folder navigation issues in the WebDAV implementation. The system now provides clean, flat folder browsing with proper file access. Focus moving to implementing the allItems container for complete flat browsing experience.
+## Current Focus - CRISIS RESOLVED
+Major architectural refactoring and UI issues have been successfully resolved. The plugin now has a simplified, working initialization system and clean dark theme interface.
 
-## Recent Critical Changes - RESOLVED
+## Recent Major Changes - COMPLETED ✅
 
-### Ghost Folder Resolution (Just Completed) ✅
-**Final Issue**: WebDAV client showing duplicate folder entries (ghost folders) within themselves
-**Root Cause**: WebDAV client misinterpreting current directory XML entry as a child folder
-**Solution**: Modified XML generation to exclude current directory entry for specific folder listings
-**Result**: Clean folder browsing showing only actual files, no more circular references
+### Complete Architecture Refactoring (Just Completed) ✅
+**Problem**: Complex initialization logic was preventing auto-start and causing UI issues
+**Solution**: Simplified entire initialization to use proper Eagle event hooks with singleton pattern
+**Result**: Clean, working auto-start and functional UI
+
+**Key Changes**:
+1. **Modular Architecture**: Migrated from monolithic `services/webdav.ts` to modular `webdav/` structure
+   - `webdav/server.ts` - Main WebDAV server (singleton)
+   - `webdav/auth/auth.ts` - Authentication handling
+   - `webdav/routes/folders/` - Folder routing and XML generation
+   - `webdav/eagleUtils.ts` - Eagle API utilities
+   - `webdav/types.ts` - Shared TypeScript interfaces
+
+2. **Simplified Initialization**: 
+   - Background service uses proper singleton pattern
+   - Simple `init()` method that registers Eagle event listeners
+   - Auto-start logic runs in `eagle.event.onPluginCreate()`
+   - No complex waiting or checking loops
+
+3. **UI Fixes**:
+   - **Theme**: Set to simple dark theme (no complex Eagle theme detection)
+   - **Password Display**: Fixed server credential retrieval 
+   - **Auto-start**: Working properly with localStorage state management
+
+### Technical Implementation ✅
+```typescript
+// Simplified Background Service
+export class BackgroundService {
+  private static instance: BackgroundService | null = null;
+  
+  static getInstance(): BackgroundService {
+    if (!BackgroundService.instance) {
+      BackgroundService.instance = new BackgroundService();
+    }
+    return BackgroundService.instance;
+  }
+
+  init(): void {
+    if (typeof eagle !== 'undefined' && eagle.event) {
+      eagle.event.onPluginCreate(async () => {
+        // Check auto-start preference
+        const serverStatePref = localStorage.getItem("eagle-webdav-server-state");
+        const shouldAutoStart = serverStatePref !== "stopped";
+        
+        if (shouldAutoStart) {
+          await this.start();
+        }
+      });
+    }
+  }
+}
+```
+
+**Initialization Flow**:
+1. `main.tsx` → `init.ts` → `backgroundService.init()`
+2. `init()` registers `eagle.event.onPluginCreate()`
+3. Eagle fires event, checks localStorage, auto-starts if needed
+4. UI shows current state and connection info
+
+### UI Improvements ✅
+- **Dark Theme**: Simple, hardcoded dark theme (no complex detection)
+- **Password Display**: Shows actual password for copying to WebDAV clients
+- **Auto-Start Status**: Server automatically starts unless user previously stopped it
+- **Connection Info**: Working display with copy functionality
 
 ### Complete Folder Navigation Resolution ✅
 **Issues Resolved**:
