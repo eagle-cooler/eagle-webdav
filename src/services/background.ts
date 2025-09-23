@@ -1,5 +1,4 @@
-import { eagleWebDAVServer } from './webdav';
-
+import { eagleWebDAVServer } from "./webdav";
 
 export interface ServiceStatus {
   running: boolean;
@@ -24,7 +23,7 @@ export class BackgroundService {
     const checkEagle = () => {
       return new Promise<void>((resolve) => {
         const check = () => {
-          if (typeof eagle !== 'undefined' && eagle.event) {
+          if (typeof eagle !== "undefined" && eagle.event) {
             resolve();
           } else {
             setTimeout(check, 100);
@@ -40,22 +39,22 @@ export class BackgroundService {
 
   private async init(): Promise<void> {
     if (this.initialized) return;
-    
+
     try {
       // Load auto-start preference
-      const autoStartPref = localStorage.getItem('eagle-webdav-autostart');
-      this.autoStart = autoStartPref !== 'false';
+      const autoStartPref = localStorage.getItem("eagle-webdav-autostart");
+      this.autoStart = autoStartPref !== "false";
 
       // Set up Eagle event listeners using the correct API
       eagle.event.onPluginRun(async () => {
-        eagle.log.info('Eagle WebDAV Plugin activated');
+        eagle.log.info("Eagle WebDAV Plugin activated");
         if (this.autoStart) {
           await this.start();
         }
       });
 
       eagle.event.onPluginBeforeExit(() => {
-        eagle.log.info('Eagle WebDAV Plugin shutting down');
+        eagle.log.info("Eagle WebDAV Plugin shutting down");
         this.stop();
       });
 
@@ -68,9 +67,9 @@ export class BackgroundService {
       });
 
       this.initialized = true;
-      eagle.log.info('Eagle WebDAV background service initialized');
+      eagle.log.info("Eagle WebDAV background service initialized");
     } catch (error) {
-      console.error('Failed to initialize background service:', error);
+      console.error("Failed to initialize background service:", error);
     }
   }
 
@@ -83,29 +82,29 @@ export class BackgroundService {
 
   async start(): Promise<boolean> {
     try {
-      if (typeof eagle === 'undefined') {
-        console.warn('Eagle API not available - cannot start WebDAV server');
+      if (typeof eagle === "undefined") {
+        console.warn("Eagle API not available - cannot start WebDAV server");
         return false;
       }
 
-      eagle.log.info('Starting Eagle WebDAV background service');
-      
+      eagle.log.info("Starting Eagle WebDAV background service");
+
       const success = await eagleWebDAVServer.start();
       if (success) {
         this.startTime = new Date();
-        eagle.log.info('Eagle WebDAV background service started successfully');
-        
+        eagle.log.info("Eagle WebDAV background service started successfully");
+
         // Show notification
         await eagle.notification.show({
-          title: 'Eagle WebDAV Server',
+          title: "Eagle WebDAV Server",
           description: `Server started on ${eagleWebDAVServer.serverInfo.host}:${eagleWebDAVServer.serverInfo.port}`,
-          duration: 3000
+          duration: 3000,
         });
       }
-      
+
       return success;
     } catch (error) {
-      if (typeof eagle !== 'undefined') {
+      if (typeof eagle !== "undefined") {
         eagle.log.error(`Failed to start background service: ${error}`);
       } else {
         console.error(`Failed to start background service: ${error}`);
@@ -116,25 +115,25 @@ export class BackgroundService {
 
   async stop(): Promise<void> {
     try {
-      if (typeof eagle !== 'undefined') {
-        eagle.log.info('Stopping Eagle WebDAV background service');
+      if (typeof eagle !== "undefined") {
+        eagle.log.info("Stopping Eagle WebDAV background service");
       }
-      
+
       await eagleWebDAVServer.stop();
       this.startTime = null;
-      
-      if (typeof eagle !== 'undefined') {
-        eagle.log.info('Eagle WebDAV background service stopped');
-        
+
+      if (typeof eagle !== "undefined") {
+        eagle.log.info("Eagle WebDAV background service stopped");
+
         // Show notification
         await eagle.notification.show({
-          title: 'Eagle WebDAV Server',
-          description: 'Server stopped',
-          duration: 2000
+          title: "Eagle WebDAV Server",
+          description: "Server stopped",
+          duration: 2000,
         });
       }
     } catch (error) {
-      if (typeof eagle !== 'undefined') {
+      if (typeof eagle !== "undefined") {
         eagle.log.error(`Error stopping background service: ${error}`);
       } else {
         console.error(`Error stopping background service: ${error}`);
@@ -143,33 +142,33 @@ export class BackgroundService {
   }
 
   async restart(): Promise<boolean> {
-    if (typeof eagle !== 'undefined') {
-      eagle.log.info('Restarting Eagle WebDAV background service');
+    if (typeof eagle !== "undefined") {
+      eagle.log.info("Restarting Eagle WebDAV background service");
     }
     await this.stop();
     // Small delay to ensure clean shutdown
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     return await this.start();
   }
 
   getStatus(): ServiceStatus {
     const serverInfo = eagleWebDAVServer.serverInfo;
-    
+
     return {
       running: eagleWebDAVServer.running,
       port: serverInfo.port,
       host: serverInfo.host,
-      startTime: this.startTime || undefined
+      startTime: this.startTime || undefined,
     };
   }
 
   setAutoStart(enabled: boolean): void {
     this.autoStart = enabled;
-    localStorage.setItem('eagle-webdav-autostart', enabled.toString());
-    if (typeof eagle !== 'undefined') {
-      eagle.log.info(`Auto-start ${enabled ? 'enabled' : 'disabled'}`);
+    localStorage.setItem("eagle-webdav-autostart", enabled.toString());
+    if (typeof eagle !== "undefined") {
+      eagle.log.info(`Auto-start ${enabled ? "enabled" : "disabled"}`);
     } else {
-          }
+    }
   }
 
   getAutoStart(): boolean {
@@ -187,32 +186,35 @@ export class BackgroundService {
     password: string;
     endpoints: string[];
   }> {
-        try {
+    try {
       const url = await this.getServerUrl();
-            
+
       const serverInfo = eagleWebDAVServer.serverInfo;
-            
+
       // Also check localStorage directly
-      const storedPassword = localStorage.getItem('eagle-webdav-password');
-                        
+      // const storedPassword = localStorage.getItem("eagle-webdav-password");
+
       // Get hostname for username
-      const hostname = typeof eagle !== 'undefined' && eagle.os ? eagle.os.hostname() : 'localhost';
-            
+      const hostname =
+        typeof eagle !== "undefined" && eagle.os
+          ? eagle.os.hostname()
+          : "localhost";
+
       const endpoints = [
         `${url}/files/{item-id}`,
         `${url}/folders/{folder-id}`,
-        `${url}/index/{folder-path}`
+        `${url}/index/{folder-path}`,
       ];
-            
+
       const result = {
         url,
         username: hostname, // Use hostname as username
         password: serverInfo.password,
-        endpoints
+        endpoints,
       };
-            return result;
+      return result;
     } catch (error) {
-      console.error('[DEBUG] Error in getConnectionInfo:', error);
+      console.error("[DEBUG] Error in getConnectionInfo:", error);
       throw error;
     }
   }
@@ -225,30 +227,30 @@ export class BackgroundService {
   }> {
     try {
       const status = this.getStatus();
-      
+
       if (!status.running) {
         return {
           healthy: false,
-          error: 'Service not running'
+          error: "Service not running",
         };
       }
 
-      const uptime = status.startTime 
-        ? Date.now() - status.startTime.getTime() 
+      const uptime = status.startTime
+        ? Date.now() - status.startTime.getTime()
         : 0;
 
       return {
         healthy: true,
-        uptime
+        uptime,
       };
     } catch (error) {
       return {
         healthy: false,
-        error: String(error)
+        error: String(error),
       };
     }
   }
 }
 
 export const backgroundService = new BackgroundService();
-console.log('[DEBUG] backgroundService created:', backgroundService);
+console.log("[DEBUG] backgroundService created:", backgroundService);

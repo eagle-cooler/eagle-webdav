@@ -5,7 +5,7 @@ const url = require('url');
 import { WebDAVServerConfig } from './webdav/types';
 import { generatePropfindXML, generateFilePropfindXML } from './webdav/xml';
 import { serveFileContent } from './webdav/fileHandler';
-import { getRootFolders, getFileById, getFolderById, getIndexPath } from './webdav/eagleParser';
+import { getRootContainer, getAllEagleFolders, getFileById, getFolderByName } from './webdav/eagleParser';
 
 // Re-export types for backward compatibility
 export type { WebDAVServerConfig, EagleWebDAVFile, EagleWebDAVFolder } from './webdav/types';
@@ -201,9 +201,40 @@ export class EagleWebDAVServer {
 
   private async handleGetRequest(pathname: string, res: any): Promise<void> {
     if (pathname === '/') {
-      // Root endpoint - list all folders
-      const folders = await getRootFolders();
+      // Root endpoint - show main containers
+      const containers = await getRootContainer();
+      this.sendResponse(res, 200, containers);
+    } else if (pathname === '/allItems' || pathname === '/allItems/') {
+      // TODO: Implement allItems - show all Eagle items
+      this.sendResponse(res, 200, []);
+    } else if (pathname === '/uncategorized' || pathname === '/uncategorized/') {
+      // TODO: Implement uncategorized - show uncategorized Eagle items
+      this.sendResponse(res, 200, []);
+    } else if (pathname === '/folders' || pathname === '/folders/') {
+      // Folders container - show all Eagle folders (flattened)
+      const folders = await getAllEagleFolders();
       this.sendResponse(res, 200, folders);
+    } else if (pathname === '/tags' || pathname === '/tags/') {
+      // TODO: Implement tags - show all Eagle tags
+      this.sendResponse(res, 200, []);
+    } else if (pathname.startsWith('/folders/')) {
+      // Individual folder contents - get folder by name
+      const folderName = decodeURIComponent(pathname.substring(9).replace(/\/$/, ''));
+      console.log(`[DEBUG] GET folder name: "${folderName}"`);
+      
+      if (!folderName) {
+        // Empty folder name, redirect to folders container
+        const folders = await getAllEagleFolders();
+        this.sendResponse(res, 200, folders);
+        return;
+      }
+      
+      const folder = await getFolderByName(folderName);
+      if (!folder) {
+        this.sendResponse(res, 404, { error: 'Folder not found' });
+        return;
+      }
+      this.sendResponse(res, 200, folder);
     } else if (pathname.startsWith('/files/')) {
       // File endpoint - serve actual file content by ID
       const id = pathname.substring(7).replace(/\/$/, '');
@@ -216,27 +247,6 @@ export class EagleWebDAVServer {
       
       // Serve the actual file content
       await serveFileContent(file, res);
-    } else if (pathname.startsWith('/folders/')) {
-      // Folder endpoint - browse folder contents by ID
-      const id = pathname.substring(9).replace(/\/$/, '');
-      console.log(`[DEBUG] GET folder ID: "${id}"`);
-      const folder = await getFolderById(id);
-      if (!folder) {
-        this.sendResponse(res, 404, { error: 'Folder not found' });
-        return;
-      }
-      this.sendResponse(res, 200, folder);
-    } else if (pathname.startsWith('/index/')) {
-      // Index endpoint - browse by path
-      const path = pathname.substring(7);
-      const pathSegments = path.split('/').filter((p: string) => p);
-      const result = await getIndexPath(pathSegments);
-      
-      if (!result) {
-        this.sendResponse(res, 404, { error: 'Path not found' });
-        return;
-      }
-      this.sendResponse(res, 200, result);
     } else if (pathname === '/health') {
       // Health check endpoint
       this.sendResponse(res, 200, {
@@ -263,32 +273,84 @@ export class EagleWebDAVServer {
     let depth = req.headers.depth || '1';
     
     if (pathname === '/') {
-      // Root directory properties
-      const folders = await getRootFolders();
-      const xmlResponse = generatePropfindXML('/', folders, depth === '0');
+      // Root directory - show main containers (allItems, uncategorized, folders, tags)
+      const containers = await getRootContainer();
+      const xmlResponse = generatePropfindXML('/', containers, depth === '0');
+      res.writeHead(207, {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(xmlResponse);
+    } else if (pathname === '/allItems' || pathname === '/allItems/') {
+      // allItems container
+      // TODO: Implement allItems listing
+      const xmlResponse = generatePropfindXML('/allItems', [], depth === '0', 'allItems');
+      res.writeHead(207, {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(xmlResponse);
+    } else if (pathname === '/uncategorized' || pathname === '/uncategorized/') {
+      // uncategorized container
+      // TODO: Implement uncategorized listing
+      const xmlResponse = generatePropfindXML('/uncategorized', [], depth === '0', 'uncategorized');
+      res.writeHead(207, {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(xmlResponse);
+    } else if (pathname === '/folders' || pathname === '/folders/') {
+      // Folders container - show all Eagle folders (flattened)
+      const folders = await getAllEagleFolders();
+      const xmlResponse = generatePropfindXML('/folders', folders, depth === '0', 'folders');
+      res.writeHead(207, {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(xmlResponse);
+    } else if (pathname === '/tags' || pathname === '/tags/') {
+      // tags container
+      // TODO: Implement tags listing
+      const xmlResponse = generatePropfindXML('/tags', [], depth === '0', 'tags');
       res.writeHead(207, {
         'Content-Type': 'application/xml; charset=utf-8',
         'Access-Control-Allow-Origin': '*'
       });
       res.end(xmlResponse);
     } else if (pathname.startsWith('/folders/')) {
-      // Extract ID and remove trailing slash if present
-      const id = pathname.substring(9).replace(/\/$/, '');
-      console.log(`[DEBUG] Cleaned folder ID: "${id}"`);
-      const folder = await getFolderById(id);
+      // Individual folder contents - get folder by name
+      const folderName = decodeURIComponent(pathname.substring(9).replace(/\/$/, ''));
+      console.log(`[DEBUG] PROPFIND folder name: "${folderName}"`);
+      
+      if (!folderName) {
+        // Empty folder name, show all Eagle folders
+        const folders = await getAllEagleFolders();
+        const xmlResponse = generatePropfindXML('/folders', folders, depth === '0', 'folders');
+        res.writeHead(207, {
+          'Content-Type': 'application/xml; charset=utf-8',
+          'Access-Control-Allow-Origin': '*'
+        });
+        res.end(xmlResponse);
+        return;
+      }
+      
+      const folder = await getFolderByName(folderName);
       if (!folder) {
         this.sendResponse(res, 404, { error: 'Folder not found' });
         return;
       }
-      // For folder content, pass children instead of the folder itself
-      const xmlResponse = generatePropfindXML(pathname, folder.children || [], depth === '0');
+      // For folder content, pass children and the folder name for proper display
+      console.log(`[DEBUG] Generating XML for folder with ${folder.children?.length || 0} children`);
+      console.log(`[DEBUG] Folder children:`, folder.children);
+      const xmlResponse = generatePropfindXML(pathname, folder.children || [], depth === '0', folder.name);
+      console.log(`[DEBUG] Generated XML response:`, xmlResponse);
       res.writeHead(207, {
         'Content-Type': 'application/xml; charset=utf-8',
         'Access-Control-Allow-Origin': '*'
       });
       res.end(xmlResponse);
     } else if (pathname.startsWith('/files/')) {
-      // Handle individual file PROPFIND - also clean trailing slash
+      // Handle individual file PROPFIND
       const id = pathname.substring(7).replace(/\/$/, '');
       console.log(`[DEBUG] Cleaned file ID: "${id}"`);
       const file = await getFileById(id);
