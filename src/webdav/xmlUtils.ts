@@ -15,7 +15,7 @@ export function escapeXML(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -39,7 +39,7 @@ export function getMultistatusOpen(): string {
  * @returns WebDAV multistatus closing XML
  */
 export function getMultistatusClose(): string {
-  return '</D:multistatus>';
+  return '</D:multistatus>\n';
 }
 
 /**
@@ -99,12 +99,57 @@ export function getSuccessStatus(): string {
 }
 
 /**
+ * Generates a WebDAV getlastmodified element
+ * @param date The last modified date
+ * @returns WebDAV getlastmodified XML element
+ */
+export function generateLastModified(date?: Date | string | number): string {
+  const modDate = date ? new Date(date) : new Date();
+  return `        <D:getlastmodified>${modDate.toUTCString()}</D:getlastmodified>\n`;
+}
+
+/**
+ * Generates a WebDAV resourcetype element for collections (folders)
+ * @returns WebDAV resourcetype collection XML element
+ */
+export function generateCollectionResourceType(): string {
+  return `        <D:resourcetype><D:collection/></D:resourcetype>\n`;
+}
+
+/**
+ * Generates a WebDAV resourcetype element for files
+ * @returns WebDAV resourcetype file XML element
+ */
+export function generateFileResourceType(): string {
+  return `        <D:resourcetype/>\n`;
+}
+
+/**
+ * Generates a WebDAV getcontentlength element
+ * @param size The content length in bytes
+ * @returns WebDAV getcontentlength XML element
+ */
+export function generateContentLength(size: number): string {
+  return `        <D:getcontentlength>${size}</D:getcontentlength>\n`;
+}
+
+/**
+ * Generates a WebDAV getcontenttype element
+ * @param mimeType The MIME type
+ * @returns WebDAV getcontenttype XML element
+ */
+export function generateContentType(mimeType: string): string {
+  return `        <D:getcontenttype>${mimeType}</D:getcontenttype>\n`;
+}
+
+/**
  * Generates a WebDAV href element
- * @param path The path for the href
+ * @param path The path to include (will be URL-encoded)
  * @returns WebDAV href XML element
  */
 export function generateHref(path: string): string {
-  return `    <D:href>${path}</D:href>\n`;
+  const encodedPath = encodeURI(path);
+  return `    <D:href>${encodedPath}</D:href>\n`;
 }
 
 /**
@@ -117,60 +162,16 @@ export function generateDisplayName(name: string): string {
 }
 
 /**
- * Generates a WebDAV getlastmodified element
- * @param date The last modified date
- * @returns WebDAV getlastmodified XML element
- */
-export function generateLastModified(date: Date): string {
-  return `        <D:getlastmodified>${date.toUTCString()}</D:getlastmodified>\n`;
-}
-
-/**
- * Generates a WebDAV resourcetype element for collections (folders)
- * @returns WebDAV resourcetype XML element for collection
- */
-export function generateCollectionResourceType(): string {
-  return '        <D:resourcetype><D:collection/></D:resourcetype>\n';
-}
-
-/**
- * Generates a WebDAV resourcetype element for files (empty)
- * @returns WebDAV resourcetype XML element for file
- */
-export function generateFileResourceType(): string {
-  return '        <D:resourcetype/>\n';
-}
-
-/**
- * Generates a WebDAV getcontentlength element
- * @param size The file size in bytes
- * @returns WebDAV getcontentlength XML element
- */
-export function generateContentLength(size: number): string {
-  return `        <D:getcontentlength>${size || 0}</D:getcontentlength>\n`;
-}
-
-/**
- * Generates a WebDAV getcontenttype element
- * @param mimeType The MIME type of the file
- * @returns WebDAV getcontenttype XML element
- */
-export function generateContentType(mimeType: string): string {
-  return `        <D:getcontenttype>${mimeType || 'application/octet-stream'}</D:getcontenttype>\n`;
-}
-
-/**
- * Generates a complete WebDAV error response
+ * Generates a WebDAV error response XML
  * @param statusCode HTTP status code
  * @param message Error message
- * @returns Complete WebDAV error XML response
+ * @returns WebDAV error XML response
  */
 export function generateErrorXML(statusCode: number, message: string): string {
-  let xml = getXMLDeclaration();
-  xml += '<D:error xmlns:D="DAV:">\n';
-  xml += '  <D:response>\n';
-  xml += `    <D:status>HTTP/1.1 ${statusCode} ${message}</D:status>\n`;
-  xml += '  </D:response>\n';
-  xml += '</D:error>';
-  return xml;
+  return getXMLDeclaration() +
+    '<D:error xmlns:D="DAV:">\n' +
+    '  <D:response>\n' +
+    `    <D:status>HTTP/1.1 ${statusCode} ${message}</D:status>\n` +
+    '  </D:response>\n' +
+    '</D:error>\n';
 }

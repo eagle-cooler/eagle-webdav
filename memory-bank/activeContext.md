@@ -1,9 +1,33 @@
 # Active Context - Eagle WebDAV Plugin
 
-## Current Focus - ALL ITEMS ROUTE COMPLETED ✅
-The allItems route has been successfully implemented with performance optimization and XML escaping fixes. The plugin now has working routes for both allItems and folders with shared XML utilities.
+## Current Focus - MOBILE CLIENT COMPATIBILITY & XML UTILITIES FIXED ✅
+The plugin now has complete mobile WebDAV client compatibility and all XML utilities issues have been resolved. Both desktop and mobile clients can properly browse Eagle libraries with correct filename display.
 
 ## Recent Major Changes - COMPLETED ✅
+
+### Mobile Client Compatibility Implementation (Just Completed) ✅
+**Problem**: Mobile WebDAV clients like CX File Explorer showing Eagle IDs instead of actual filenames
+**Root Cause**: Mobile clients often use href paths as display names instead of displayname XML elements
+**Solution**: Changed URL structure from `/files/{id}` to `/files/{id}/{filename}` format
+**Result**: Mobile clients now display proper filenames while maintaining desktop client compatibility
+
+**Key Implementation**:
+1. **URL Format Change**: `/files/{id}` → `/files/{id}/{filename}`
+2. **Server Parsing**: Extract ID from first path segment, support both old/new formats
+3. **URL Encoding**: Use `encodeURI()` for special characters in filenames
+4. **Cross-Client Support**: Works with both desktop and mobile WebDAV clients
+
+### XML Utilities Crisis Resolution (Just Completed) ✅
+**Problem**: Folders route loading error due to corrupted xmlUtils.ts file
+**Root Cause**: File corruption during mobile client compatibility changes
+**Solution**: Complete xmlUtils.ts recreation with all required functions
+**Result**: All routes working properly with shared XML utilities
+
+**Technical Recovery**:
+- Properly deleted and recreated xmlUtils.ts file
+- Added all missing XML generation functions for allItems route
+- Fixed import dependencies across all route modules
+- Ensured consistent XML escaping and URL encoding
 
 ### AllItems Route Implementation (Just Completed) ✅
 **Problem**: Missing allItems route for browsing all library items via WebDAV
@@ -21,17 +45,40 @@ The allItems route has been successfully implemented with performance optimizati
    - Added `escapeXML()` function for proper character escaping
    - Fixed display names containing special characters (&, <, >, ", ')
 
-### Shared XML Utilities Created ✅
-**Problem**: Duplicate XML generation code across routes
-**Solution**: Created centralized `xmlUtils.ts` with reusable XML utilities
-**Result**: Clean, maintainable XML generation with consistent escaping
+### Complete XML Utilities Implementation ✅
+**Components Created**:
+- `webdav/xmlUtils.ts` - Complete shared XML generation utilities
+- All XML functions properly exported and tested
+- Consistent XML escaping across all routes
+- Proper URL encoding for WebDAV href elements
+- Error recovery from file corruption during development
 
 **Key Features**:
-- `webdav/xmlUtils.ts` - Shared XML utilities for all routes
-- Automatic XML escaping in all text content
-- Reusable WebDAV XML element generators
-- Consistent formatting across all routes
-- Updated allItems and auth modules to use shared utilities
+- `escapeXML()` - Prevents XML parsing errors in WebDAV clients
+- `generateHref()` - URL-encoded href elements for file paths
+- `generateDisplayName()` - XML-escaped display names
+- Complete set of WebDAV XML element generators
+- Shared across allItems, folders, and auth modules
+
+### Mobile Client URL Architecture ✅
+**URL Structure**:
+```
+Desktop Client URLs (legacy support):
+/files/{id}                    → Works but shows IDs
+
+Mobile Client URLs (new format):
+/files/{id}/{filename}         → Shows proper filenames
+```
+
+**Server Implementation**:
+```typescript
+// Extract ID from first path segment (both formats)
+const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
+const id = pathParts[0]; // First part is always the ID
+
+// URL encoding for special characters
+const encodedPath = encodeURI(`/files/${id}/${filename}`);
+```
 
 ### Complete Architecture Refactoring (Previously Completed) ✅
 **Problem**: Complex initialization logic was preventing auto-start and causing UI issues

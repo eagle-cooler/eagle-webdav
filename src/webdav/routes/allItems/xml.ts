@@ -50,7 +50,6 @@ export function generateAllItemsListXML(pathname: string, items: EagleWebDAVFile
   // Add child items if depth > 0
   if (!isDepthZero && items && Array.isArray(items)) {
     for (const item of items) {
-      const itemPath = `/files/${item.id}`;
       let displayName: string;
       
       // Add extension if not already present
@@ -59,6 +58,9 @@ export function generateAllItemsListXML(pathname: string, items: EagleWebDAVFile
       } else {
         displayName = item.name;
       }
+      
+      // Use the display name in the path for better client compatibility
+      const itemPath = `/files/${item.id}/${displayName}`;
       
       xml += getResponseOpen();
       xml += generateHref(itemPath);
@@ -107,7 +109,6 @@ export function generateAllItemsContentXML(pathname: string, items: EagleWebDAVF
   // Add child resources if depth > 0
   if (!isDepthZero && items && Array.isArray(items)) {
     for (const item of items) {
-      const itemPath = `/files/${item.id}`;
       let displayName: string;
       
       // Add extension if not already present
@@ -116,6 +117,9 @@ export function generateAllItemsContentXML(pathname: string, items: EagleWebDAVF
       } else {
         displayName = item.name;
       }
+      
+      // Use the display name in the path for better client compatibility
+      const itemPath = `/files/${item.id}/${displayName}`;
       
       xml += getResponseOpen();
       xml += generateHref(itemPath);

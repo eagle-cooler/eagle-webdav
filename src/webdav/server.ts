@@ -158,7 +158,9 @@ export class EagleWebDAVServer {
       await handleFolderGET(pathname, res, this.sendResponse.bind(this));
     } else if (pathname.startsWith('/files/')) {
       // File endpoint - serve actual file content by ID
-      const id = pathname.substring(7).replace(/\/$/, '');
+      // Handle both /files/{id} and /files/{id}/{filename} formats
+      const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
+      const id = pathParts[0]; // First part is always the ID
       console.log(`[DEBUG] GET file ID: "${id}"`);
       const file = await getFileById(id);
       if (!file) {
@@ -212,8 +214,19 @@ export class EagleWebDAVServer {
           // Use folder route handler
           await handleFolderPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this));
         } else if (pathname.startsWith('/files/')) {
-          // File PROPFIND (need to implement)
-          this.sendResponse(res, 404, { error: 'File PROPFIND not implemented' });
+          // File PROPFIND - get file info by ID
+          // Handle both /files/{id} and /files/{id}/{filename} formats
+          const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
+          const id = pathParts[0]; // First part is always the ID
+          const file = await getFileById(id);
+          if (!file) {
+            const errorXML = '<?xml version="1.0" encoding="utf-8"?>\n<D:error xmlns:D="DAV:"><D:response><D:status>HTTP/1.1 404 Not Found</D:status></D:response></D:error>';
+            this.sendXMLResponse(res, 404, errorXML);
+          } else {
+            // Generate PROPFIND response for single file
+            const xml = generateFolderContentXML(pathname, [file], isDepthZero);
+            this.sendXMLResponse(res, 207, xml);
+          }
         } else {
           this.sendResponse(res, 404, { error: 'Not found' });
         }
@@ -227,7 +240,9 @@ export class EagleWebDAVServer {
   private async handleHeadRequest(pathname: string, res: any): Promise<void> {
     if (pathname.startsWith('/files/')) {
       // File HEAD request - just return headers without content
-      const id = pathname.substring(7).replace(/\/$/, '');
+      // Handle both /files/{id} and /files/{id}/{filename} formats
+      const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
+      const id = pathParts[0]; // First part is always the ID
       const file = await getFileById(id);
       if (!file) {
         res.writeHead(404);
@@ -251,7 +266,11 @@ export class EagleWebDAVServer {
       // Set proper headers
       res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
       res.setHeader('Content-Length', file.size || 0);
-      res.setHeader('Content-Disposition', `inline; filename="${file.name}"`);
+      
+      // Properly encode filename for Content-Disposition header (RFC 6266)
+      const filename = file.name || 'download';
+      const encodedFilename = encodeURIComponent(filename);
+      res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodedFilename}`);
       
       if (file.path && typeof eagle !== 'undefined') {
         // Stream file from Eagle

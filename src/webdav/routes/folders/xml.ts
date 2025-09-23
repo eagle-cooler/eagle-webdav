@@ -3,6 +3,7 @@
  */
 
 import { EagleWebDAVFolder } from '../../types';
+import { escapeXML } from '../../xmlUtils';
 
 /**
  * Generates WebDAV PROPFIND XML response for folder listings
@@ -116,12 +117,12 @@ export function generateFolderContentXML(pathname: string, items: any[], isDepth
         }
       } else if (item.size !== undefined) {
         // It's a file - add extension if not already present
-        itemPath = `/files/${item.id}`;
         if (item.ext && !item.name.toLowerCase().endsWith(`.${item.ext.toLowerCase()}`)) {
           displayName = `${item.name}.${item.ext}`;
         } else {
           displayName = item.name;
         }
+        itemPath = encodeURI(`/files/${item.id}/${displayName}`);
       } else {
         // Fallback
         itemPath = `${pathname}${pathname.endsWith('/') ? '' : '/'}${item.name || item.id}`;
@@ -141,7 +142,7 @@ export function generateFolderContentXML(pathname: string, items: any[], isDepth
         xml += `        <D:getcontenttype>${item.mimeType || 'application/octet-stream'}</D:getcontenttype>\n`;
       }
       
-      xml += `        <D:displayname>${displayName}</D:displayname>\n`;
+      xml += `        <D:displayname>${escapeXML(displayName)}</D:displayname>\n`;
       xml += `        <D:getlastmodified>${item.lastModified ? new Date(item.lastModified).toUTCString() : new Date().toUTCString()}</D:getlastmodified>\n`;
       xml += `      </D:prop>\n`;
       xml += `      <D:status>HTTP/1.1 200 OK</D:status>\n`;

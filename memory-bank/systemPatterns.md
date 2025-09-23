@@ -85,10 +85,25 @@ Authentication Flow:
 ```
 
 ### Path Resolution
-- **Root**: `/` → Lists Eagle folders
-- **Folders**: `/folders/{id}` → Folder contents (subfolders + files)
-- **Files**: `/files/{id}` → Individual file content
-- **Trailing Slash Handling**: Automatically stripped from IDs
+- **Root**: `/` → Lists Eagle folders and containers
+- **Folders**: `/folders/{name}` → Folder contents (subfolders + files)
+- **Files**: `/files/{id}/{filename}` → Individual file content with mobile client compatibility
+- **Legacy Files**: `/files/{id}` → Backward compatibility for old URL format
+- **URL Encoding**: All paths properly encoded for special characters
+- **Trailing Slash Handling**: Automatically stripped from IDs and names
+
+### Mobile Client Compatibility
+```
+URL Format Evolution:
+Old: /files/{id}                    → Desktop clients only
+New: /files/{id}/{filename}         → Desktop + Mobile clients
+
+Server Parsing:
+1. Extract ID from first path segment
+2. Support both old and new formats
+3. URL encode filenames for special characters
+4. Mobile clients use href as display name
+```
 
 ## Data Flow Patterns
 
