@@ -4,9 +4,10 @@ const url = require('url');
 // Import modular components
 import { WebDAVServerConfig } from './types';
 import { authenticateWebDAV, getServerCredentials } from './auth/auth';
-import { handleFolderPROPFIND } from './routes/folders';
-import { handleAllItemsPROPFIND } from './routes/allItems';
-import { getRootContainer, getFileById } from './eagleUtils';
+import { handleFolderGET, handleFolderPROPFIND } from './routes/folders';
+import { handleAllItemsGET, handleAllItemsPROPFIND } from './routes/allItems';
+import { handleFilesGET, handleFilesPROPFIND, handleFilesHEAD } from './routes/files';
+import { getRootContainer } from './eagleUtils';
 import { generateFolderContentXML } from './routes/folders/xml';
 
 // Re-export types for backward compatibility
@@ -146,49 +147,21 @@ export class EagleWebDAVServer {
     if (pathname === '/') {
       // Root endpoint - return method not allowed for GET on collections
       this.sendMethodNotAllowedForCollection(res, pathname);
-    } else if (pathname === '/allItems' || pathname === '/allItems/') {
-      // Collections can't be downloaded, only browsed via PROPFIND
-      this.sendMethodNotAllowedForCollection(res, pathname);
+    } else if (pathname === '/allItems' || pathname === '/allItems/' || pathname.startsWith('/allItems/')) {
+      // Use allItems route handler (handles both collection requests and file requests within allItems)
+      await handleAllItemsGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
     } else if (pathname === '/uncategorized' || pathname === '/uncategorized/') {
       // Collections can't be downloaded, only browsed via PROPFIND
       this.sendMethodNotAllowedForCollection(res, pathname);
-    } else if (pathname === '/folders' || pathname === '/folders/') {
-      // Collections can't be downloaded, only browsed via PROPFIND
-      this.sendMethodNotAllowedForCollection(res, pathname);
+    } else if (pathname === '/folders' || pathname === '/folders/' || pathname.startsWith('/folders/')) {
+      // Use folder route handler (handles both folder requests and file requests within folders)
+      await handleFolderGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
     } else if (pathname === '/tags' || pathname === '/tags/') {
       // Collections can't be downloaded, only browsed via PROPFIND
       this.sendMethodNotAllowedForCollection(res, pathname);
-    } else if (pathname.startsWith('/folders/')) {
-      // Check if this is a file request within a folder (e.g., /folders/fonts/filename.ext)
-      const pathParts = pathname.substring(9).split('/'); // Remove '/folders/' prefix
-      if (pathParts.length >= 2 && pathParts[1]) {
-        // This looks like a file request: /folders/{folderName}/{filename}
-        const folderName = pathParts[0];
-        const filename = pathParts.slice(1).join('/'); // Handle filenames with slashes
-        console.log(`[DEBUG] File request in folder - Folder: "${folderName}", Filename: "${filename}"`);
-        
-        // Try to find the file by name in the specified folder
-        await this.handleFolderFileRequest(folderName, filename, res);
-        return;
-      } else {
-        // Individual folders can't be downloaded, only browsed via PROPFIND
-        this.sendMethodNotAllowedForCollection(res, pathname);
-      }
     } else if (pathname.startsWith('/files/')) {
-      // File endpoint - serve actual file content by ID
-      // Handle both /files/{id} and /files/{id}/{filename} formats
-      const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
-      const id = pathParts[0]; // First part is always the ID
-      console.log(`[DEBUG] GET file request - Full pathname: "${pathname}", pathParts: ${JSON.stringify(pathParts)}, extracted ID: "${id}"`);
-      const file = await getFileById(id);
-      if (!file) {
-        console.log(`[DEBUG] File not found for ID: "${id}"`);
-        this.sendResponse(res, 404, { error: 'File not found' });
-        return;
-      }
-      
-      // Serve the actual file content (need to implement file serving)
-      await this.serveFileContent(file, res);
+      // Use files route handler
+      await handleFilesGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
     } else if (pathname === '/health') {
       this.sendResponse(res, 200, { status: 'ok', uptime: process.uptime() });
     } else {
@@ -215,9 +188,9 @@ export class EagleWebDAVServer {
           const containers = await getRootContainer();
           const xml = generateFolderContentXML(pathname, containers, isDepthZero);
           this.sendXMLResponse(res, 207, xml);
-        } else if (pathname === '/allItems' || pathname === '/allItems/') {
-          // Use allItems route handler
-          await handleAllItemsPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this));
+        } else if (pathname === '/allItems' || pathname === '/allItems/' || pathname.startsWith('/allItems/')) {
+          // Use allItems route handler (handles both collection and individual file PROPFIND)
+          await handleAllItemsPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this), this.generateSingleFilePROPFIND.bind(this));
         } else if (pathname === '/uncategorized' || pathname === '/uncategorized/') {
           // TODO: Implement uncategorized PROPFIND
           const xml = generateFolderContentXML(pathname, [], isDepthZero, 'Uncategorized');
@@ -233,22 +206,8 @@ export class EagleWebDAVServer {
           // Use folder route handler
           await handleFolderPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this));
         } else if (pathname.startsWith('/files/')) {
-          // File PROPFIND - get file info by ID
-          // Handle both /files/{id} and /files/{id}/{filename} formats
-          const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
-          const id = pathParts[0]; // First part is always the ID
-          console.log(`[DEBUG] File PROPFIND - Full path: ${pathname}, Extracted ID: ${id}`);
-          const file = await getFileById(id);
-          if (!file) {
-            console.log(`[DEBUG] File not found for ID: ${id}`);
-            const errorXML = '<?xml version="1.0" encoding="utf-8"?>\n<D:error xmlns:D="DAV:"><D:response><D:status>HTTP/1.1 404 Not Found</D:status></D:response></D:error>';
-            this.sendXMLResponse(res, 404, errorXML);
-          } else {
-            console.log(`[DEBUG] File found: ${file.name}, generating PROPFIND response`);
-            // Generate PROPFIND response for single file
-            const xml = this.generateSingleFilePROPFIND(pathname, file);
-            this.sendXMLResponse(res, 207, xml);
-          }
+          // Use files route handler
+          await handleFilesPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this), this.generateSingleFilePROPFIND.bind(this));
         } else {
           this.sendResponse(res, 404, { error: 'Not found' });
         }
@@ -259,92 +218,10 @@ export class EagleWebDAVServer {
     });
   }
 
-  private async handleFolderFileRequest(folderName: string, filename: string, res: any): Promise<void> {
-    try {
-      console.log(`[DEBUG] Looking for file "${filename}" in folder "${folderName}"`);
-      
-      // Import the folder utilities to get items in folder
-      const { getFolderByName } = await import('./eagleUtils');
-      
-      // Get the folder
-      const folder = await getFolderByName(folderName);
-      if (!folder) {
-        console.log(`[DEBUG] Folder "${folderName}" not found`);
-        this.sendResponse(res, 404, { error: 'Folder not found' });
-        return;
-      }
-      
-      // Get all files in the folder
-      const folderData = await folder;
-      if (!folderData.children || folderData.children.length === 0) {
-        console.log(`[DEBUG] No files found in folder "${folderName}"`);
-        this.sendResponse(res, 404, { error: 'File not found' });
-        return;
-      }
-      
-      // Look for the file by matching the filename (with or without extension)
-      let targetFile = null;
-      for (const item of folderData.children) {
-        // Check if it's a file (has size property) vs folder (has children property)
-        if ('size' in item && item.size !== undefined) { // It's a file
-          // Check exact match first
-          const itemExt = 'ext' in item ? item.ext : '';
-          const itemName = item.name + (itemExt ? `.${itemExt}` : '');
-          if (itemName === filename || item.name === filename) {
-            targetFile = item;
-            break;
-          }
-          
-          // Also try case-insensitive match
-          if (itemName.toLowerCase() === filename.toLowerCase() || 
-              item.name.toLowerCase() === filename.toLowerCase()) {
-            targetFile = item;
-            break;
-          }
-        }
-      }
-      
-      if (!targetFile) {
-        console.log(`[DEBUG] File "${filename}" not found in folder "${folderName}"`);
-        this.sendResponse(res, 404, { error: 'File not found' });
-        return;
-      }
-      
-      console.log(`[DEBUG] Found file "${filename}" with ID "${targetFile.id}" in folder "${folderName}"`);
-      
-      // Get the full file object with path information
-      const file = await getFileById(targetFile.id);
-      if (!file) {
-        console.log(`[DEBUG] Could not get file details for ID "${targetFile.id}"`);
-        this.sendResponse(res, 404, { error: 'File not found' });
-        return;
-      }
-      
-      // Serve the file
-      await this.serveFileContent(file, res);
-    } catch (error) {
-      console.error('[DEBUG] Error handling folder file request:', error);
-      this.sendResponse(res, 500, { error: 'Internal server error' });
-    }
-  }
-
   private async handleHeadRequest(pathname: string, res: any): Promise<void> {
     if (pathname.startsWith('/files/')) {
-      // File HEAD request - just return headers without content
-      // Handle both /files/{id} and /files/{id}/{filename} formats
-      const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
-      const id = pathParts[0]; // First part is always the ID
-      const file = await getFileById(id);
-      if (!file) {
-        res.writeHead(404);
-        res.end();
-        return;
-      }
-      
-      res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
-      res.setHeader('Content-Length', file.size || 0);
-      res.writeHead(200);
-      res.end();
+      // Use files route handler
+      await handleFilesHEAD(pathname, res);
     } else {
       // For collections, just return 200
       res.writeHead(200);

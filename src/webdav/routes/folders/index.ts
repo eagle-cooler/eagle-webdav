@@ -3,44 +3,120 @@
  * Handles all folder-related requests and operations
  */
 
-import { getAllEagleFolders, getFolderByName } from '../../eagleUtils';
+import { getAllEagleFolders, getFolderByName, getFileById } from '../../eagleUtils';
 import { generateFolderListXML, generateFolderContentXML } from './xml';
 
 /**
- * Handles GET requests for folder routes
+ * Handles GET requests for folder routes - including file serving within folders
  * @param pathname Request pathname
  * @param req HTTP request object
  * @param res HTTP response object
  * @param sendResponse Response sending function
+ * @param serveFileContent File serving function
  */
 export async function handleFolderGET(
   pathname: string, 
   res: any, 
-  sendResponse: (res: any, status: number, data: any) => void
+  sendResponse: (res: any, status: number, data: any) => void,
+  serveFileContent: (file: any, res: any) => Promise<void>
 ): Promise<void> {
+  const pathParts = pathname.substring(9).split('/'); // Remove '/folders/' prefix
+  
   if (pathname === '/folders' || pathname === '/folders/') {
-    // Folders container - show all Eagle folders (flattened)
-    const folders = await getAllEagleFolders();
-    sendResponse(res, 200, folders);
-  } else if (pathname.startsWith('/folders/')) {
-    // Individual folder contents - get folder by name
-    const folderName = decodeURIComponent(pathname.substring(9).replace(/\/$/, ''));
+    // Folders container - not allowed for GET
+    sendResponse(res, 405, { error: 'Method not allowed on collections' });
+  } else if (pathParts.length === 1 && pathParts[0]) {
+    // Individual folder - not allowed for GET
+    sendResponse(res, 405, { error: 'Method not allowed on collections' });
+  } else if (pathParts.length >= 2 && pathParts[0] && pathParts[1]) {
+    // File within folder: /folders/{folderName}/{filename}
+    const folderName = decodeURIComponent(pathParts[0]);
+    const filename = pathParts.slice(1).join('/'); // Handle filenames with slashes
     
-    if (!folderName) {
-      // Empty folder name, redirect to folders container
-      const folders = await getAllEagleFolders();
-      sendResponse(res, 200, folders);
-      return;
-    }
+    console.log(`[DEBUG] File request in folder - Folder: "${folderName}", Filename: "${filename}"`);
     
+    await handleFolderFileRequest(folderName, filename, res, sendResponse, serveFileContent);
+  } else {
+    sendResponse(res, 404, { error: 'Not found' });
+  }
+}
+
+/**
+ * Handles file requests within folders
+ * @param folderName Name of the folder
+ * @param filename Name of the file
+ * @param res HTTP response object
+ * @param sendResponse Response sending function
+ * @param serveFileContent File serving function
+ */
+async function handleFolderFileRequest(
+  folderName: string,
+  filename: string,
+  res: any,
+  sendResponse: (res: any, status: number, data: any) => void,
+  serveFileContent: (file: any, res: any) => Promise<void>
+): Promise<void> {
+  try {
+    console.log(`[DEBUG] Looking for file "${filename}" in folder "${folderName}"`);
+    
+    // Get the folder
     const folder = await getFolderByName(folderName);
     if (!folder) {
+      console.log(`[DEBUG] Folder "${folderName}" not found`);
       sendResponse(res, 404, { error: 'Folder not found' });
       return;
     }
-    sendResponse(res, 200, folder);
-  } else {
-    sendResponse(res, 404, { error: 'Not found' });
+    
+    // Get all files in the folder
+    if (!folder.children || folder.children.length === 0) {
+      console.log(`[DEBUG] No files found in folder "${folderName}"`);
+      sendResponse(res, 404, { error: 'File not found' });
+      return;
+    }
+    
+    // Look for the file by matching the filename (with or without extension)
+    let targetFile = null;
+    for (const item of folder.children) {
+      // Check if it's a file (has size property) vs folder (has children property)
+      if ('size' in item && item.size !== undefined) { // It's a file
+        // Check exact match first
+        const itemExt = 'ext' in item ? item.ext : '';
+        const itemName = item.name + (itemExt ? `.${itemExt}` : '');
+        if (itemName === filename || item.name === filename) {
+          targetFile = item;
+          break;
+        }
+        
+        // Also try case-insensitive match
+        if (itemName.toLowerCase() === filename.toLowerCase() || 
+            item.name.toLowerCase() === filename.toLowerCase()) {
+          targetFile = item;
+          break;
+        }
+      }
+    }
+    
+    if (!targetFile) {
+      console.log(`[DEBUG] File "${filename}" not found in folder "${folderName}"`);
+      sendResponse(res, 404, { error: 'File not found' });
+      return;
+    }
+    
+    console.log(`[DEBUG] Found file "${filename}" with ID "${targetFile.id}" in folder "${folderName}"`);
+    
+    // Get the full file object with path information
+    const file = await getFileById(targetFile.id);
+    if (!file) {
+      console.log(`[DEBUG] Could not get file details for ID "${targetFile.id}"`);
+      sendResponse(res, 404, { error: 'File not found' });
+      return;
+    }
+    
+    // Serve the file
+    await serveFileContent(file, res);
+  } catch (error) {
+    console.error('[DEBUG] Error handling folder file request:', error);
+    sendResponse(res, 500, { error: 'Internal server error' });
   }
 }
 
