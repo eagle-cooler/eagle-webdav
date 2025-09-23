@@ -42,11 +42,24 @@
 - **Challenge-Response**: Proper WWW-Authenticate implementation
 - **Error Responses**: XML-formatted authentication errors
 
-### 4. Route Handlers (`webdav/routes/folders/`)
+### 4. Route Handlers (`webdav/routes/`)
+#### Folders Route (`webdav/routes/folders/`)
 - **GET Handler**: Folder content serving
 - **PROPFIND Handler**: WebDAV property discovery
 - **XML Generation**: RFC-compliant WebDAV responses
 - **Eagle Integration**: Folder and item retrieval
+
+#### AllItems Route (`webdav/routes/allItems/`)
+- **Performance Optimization**: Count-based loading with `eagle.item.countAll()`
+- **Smart Loading**: Returns empty folder if >5000 items
+- **Complete Integration**: GET/PROPFIND handlers with proper XML responses
+- **Eagle API**: Uses `eagle.item.getAll()` for item retrieval
+
+### 5. Shared XML Utilities (`webdav/xmlUtils.ts`)
+- **Centralized Generation**: Reusable XML element generators
+- **Automatic Escaping**: `escapeXML()` function prevents parsing errors
+- **Consistent Structure**: Standardized WebDAV XML formatting
+- **Error Handling**: `generateErrorXML()` for proper error responses
 
 ## Key Design Patterns
 

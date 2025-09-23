@@ -1,11 +1,39 @@
 # Active Context - Eagle WebDAV Plugin
 
-## Current Focus - CRISIS RESOLVED
-Major architectural refactoring and UI issues have been successfully resolved. The plugin now has a simplified, working initialization system and clean dark theme interface.
+## Current Focus - ALL ITEMS ROUTE COMPLETED ✅
+The allItems route has been successfully implemented with performance optimization and XML escaping fixes. The plugin now has working routes for both allItems and folders with shared XML utilities.
 
 ## Recent Major Changes - COMPLETED ✅
 
-### Complete Architecture Refactoring (Just Completed) ✅
+### AllItems Route Implementation (Just Completed) ✅
+**Problem**: Missing allItems route for browsing all library items via WebDAV
+**Solution**: Implemented complete allItems route with performance optimization and XML escaping
+**Result**: Working allItems route with count-based performance optimization and proper XML handling
+
+**Key Implementation**:
+1. **Performance-Optimized**: Uses `eagle.item.countAll()` to check library size before loading
+   - If >5000 items: Returns empty folder for performance
+   - If ≤5000 items: Loads all items via `eagle.item.getAll()`
+2. **Route Structure**: Following established folders pattern
+   - `webdav/routes/allItems/index.ts` - Route handlers (GET/PROPFIND)
+   - `webdav/routes/allItems/xml.ts` - XML generation with escaping
+3. **XML Escaping Fix**: Resolved client-side XML parsing errors
+   - Added `escapeXML()` function for proper character escaping
+   - Fixed display names containing special characters (&, <, >, ", ')
+
+### Shared XML Utilities Created ✅
+**Problem**: Duplicate XML generation code across routes
+**Solution**: Created centralized `xmlUtils.ts` with reusable XML utilities
+**Result**: Clean, maintainable XML generation with consistent escaping
+
+**Key Features**:
+- `webdav/xmlUtils.ts` - Shared XML utilities for all routes
+- Automatic XML escaping in all text content
+- Reusable WebDAV XML element generators
+- Consistent formatting across all routes
+- Updated allItems and auth modules to use shared utilities
+
+### Complete Architecture Refactoring (Previously Completed) ✅
 **Problem**: Complex initialization logic was preventing auto-start and causing UI issues
 **Solution**: Simplified entire initialization to use proper Eagle event hooks with singleton pattern
 **Result**: Clean, working auto-start and functional UI
@@ -15,6 +43,8 @@ Major architectural refactoring and UI issues have been successfully resolved. T
    - `webdav/server.ts` - Main WebDAV server (singleton)
    - `webdav/auth/auth.ts` - Authentication handling
    - `webdav/routes/folders/` - Folder routing and XML generation
+   - `webdav/routes/allItems/` - All items routing and XML generation ✅ NEW
+   - `webdav/xmlUtils.ts` - Shared XML utilities ✅ NEW
    - `webdav/eagleUtils.ts` - Eagle API utilities
    - `webdav/types.ts` - Shared TypeScript interfaces
 

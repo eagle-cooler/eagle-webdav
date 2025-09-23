@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "platform": "all",
   "arch": "all",
-  "name": "Eagle WebDAV Server",
+  "name": "Eagle WebDAV",
   "description": "Expose your Eagle library through WebDAV protocol for remote access and synchronization.",
-  "logo": "/dist/vite.svg",
+  "logo": "/logo.jpg",
   "keywords": ["webdav", "server", "remote", "sync", "access"],
   "devTools": true,
   "main": {
