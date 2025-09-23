@@ -1,15 +1,25 @@
 # Active Context - Eagle WebDAV Plugin
 
-## Current Focus - MOBILE CLIENT COMPATIBILITY & XML UTILITIES FIXED ✅
-The plugin now has complete mobile WebDAV client compatibility and all XML utilities issues have been resolved. Both desktop and mobile clients can properly browse Eagle libraries with correct filename display.
+## Current State ✅
+- **Route-based architecture** with clean separation of concerns
+- **Batch downloads working** across all WebDAV clients (desktop, mobile)
+- **Universal client compatibility** - works with Windows, macOS, Android clients
 
-## Recent Major Changes - COMPLETED ✅
+## File Access Patterns
+1. **ID-based**: `/files/{id}/{filename}` (direct Eagle ID access)
+2. **Folder-based**: `/folders/{folderName}/{filename}` (folder navigation)
+3. **Collection-based**: `/allItems/{filename}` (all items browsing)
 
-### Mobile Client Compatibility Implementation (Just Completed) ✅
-**Problem**: Mobile WebDAV clients like CX File Explorer showing Eagle IDs instead of actual filenames
-**Root Cause**: Mobile clients often use href paths as display names instead of displayname XML elements
-**Solution**: Changed URL structure from `/files/{id}` to `/files/{id}/{filename}` format
-**Result**: Mobile clients now display proper filenames while maintaining desktop client compatibility
+## Working Routes
+- **`/folders/`**: Browse Eagle folders + download files within folders
+- **`/allItems/`**: Browse all items + download any file by name  
+- **`/files/`**: Direct file access using Eagle IDs
+
+## Recent Fixes
+- **Route Architecture**: Moved from centralized file serving to route-based handlers
+- **Batch Downloads**: Added file search logic to folder and allItems routes
+- **Mobile Compatibility**: Filename display working on Android WebDAV apps
+- **Error Handling**: Proper 405/404 responses for collections vs files
 
 **Key Implementation**:
 1. **URL Format Change**: `/files/{id}` → `/files/{id}/{filename}`

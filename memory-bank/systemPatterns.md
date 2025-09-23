@@ -1,53 +1,49 @@
 # System Patterns - Eagle WebDAV Plugin
 
-## Architecture Overview
+## Architecture
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Eagle App     │    │  Plugin System   │    │  WebDAV Clients │
-│                 │    │                  │    │                 │
-│ ┌─────────────┐ │    │ ┌──────────────┐ │    │ • AirExplorer   │
-│ │ Library     │ │◄───┤ │ Background   │ │    │ • Windows Exp   │
-│ │ - Folders   │ │    │ │ Service      │ │    │ • macOS Finder  │
-│ │ - Items     │ │    │ │              │ │    │ • Mobile Apps   │
-│ │ - Metadata  │ │    │ └──────────────┘ │    │                 │
-│ └─────────────┘ │    │        │         │    └─────────────────┘
-└─────────────────┘    │        │         │             │
-                       │ ┌──────▼──────┐  │             │
-                       │ │ HTTP Server │  │◄────────────┘
-                       │ │ (Node.js)   │  │
-                       │ │ Port 41596  │  │
-                       │ └─────────────┘  │
-                       └──────────────────┘
+Eagle App ←→ Plugin (HTTP Server:41596) ←→ WebDAV Clients
 ```
 
 ## Core Components
 
-### 1. WebDAV Server (`webdav/server.ts`)
-- **Singleton Pattern**: `EagleWebDAVServer.getInstance()`
-- **HTTP Server**: Node.js built-in `http` module
-- **Method Handlers**: PROPFIND, GET, HEAD, OPTIONS
-- **Modular Routing**: Delegates to specialized route handlers
-- **Authentication**: Integrates with auth module
+### WebDAV Server (`webdav/server.ts`)
+- **Singleton**: `EagleWebDAVServer.getInstance()`
+- **Methods**: PROPFIND, GET, HEAD, OPTIONS
+- **Delegates** to route handlers for all operations
 
-### 2. Background Service (`webdav/background.ts`)
-- **Singleton Pattern**: `BackgroundService.getInstance()`
-- **Simple Initialization**: Single `init()` method
-- **Eagle Events**: `onPluginCreate()` for auto-start
-- **State Management**: localStorage for auto-start preferences
-- **Connection Info**: Provides client connection details
+### Route Pattern (`webdav/routes/{name}/index.ts`)
+Each route implements:
+```typescript
+export async function handle{Name}GET(
+  pathname: string, res: any,
+  sendResponse: (res: any, status: number, data: any) => void,
+  serveFileContent: (file: any, res: any) => Promise<void>
+): Promise<void>
 
-### 3. Authentication Module (`webdav/auth/`)
-- **Credential Generation**: Hostname + UUID pattern
-- **Password Storage**: localStorage with fallback generation
-- **Challenge-Response**: Proper WWW-Authenticate implementation
-- **Error Responses**: XML-formatted authentication errors
+export async function handle{Name}PROPFIND(
+  pathname: string, req: any, res: any,
+  sendXMLResponse: (res: any, statusCode: number, xml: string) => void,
+  generateSingleFilePROPFIND?: (requestPath: string, file: any) => string
+): Promise<void>
+```
 
-### 4. Route Handlers (`webdav/routes/`)
-#### Folders Route (`webdav/routes/folders/`)
-- **GET Handler**: Folder content serving
-- **PROPFIND Handler**: WebDAV property discovery
-- **XML Generation**: RFC-compliant WebDAV responses
-- **Eagle Integration**: Folder and item retrieval
+### Current Routes
+- **`/folders/`**: Folder navigation + file serving (`/folders/{name}/{file}`)
+- **`/allItems/`**: All items browsing + file serving (`/allItems/{file}`)  
+- **`/files/`**: Direct file access by ID (`/files/{id}/{file}`)
+
+### Adding New Routes
+1. Create `/routes/{name}/index.ts` with handlers
+2. Create `/routes/{name}/xml.ts` for WebDAV XML
+3. Add route imports to `server.ts`
+4. Add delegation in `handleGetRequest()` and `handlePropfindRequest()`
+5. Handle collection (405) vs file (search+serve) requests
+
+## Key Utilities
+- **`eagleUtils.ts`**: Eagle API integration (`getFileById`, `getFolderByName`, etc.)
+- **`xmlUtils.ts`**: Shared XML generation (`escapeXML`, `generateHref`, etc.)
+- **`auth/auth.ts`**: Basic HTTP auth with auto-generated credentials
 
 #### AllItems Route (`webdav/routes/allItems/`)
 - **Performance Optimization**: Count-based loading with `eagle.item.countAll()`
