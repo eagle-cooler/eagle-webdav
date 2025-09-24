@@ -15,13 +15,14 @@ A background service plugin for Eagle that exposes your Eagle library content vi
 - Password: Automatically generated UUID (stored securely)
 
 ### 📁 **Library Access**
-- **All Items**: Browse all items in your Eagle library (✅ implemented, performance-optimized for <5000 items)
-- **Folders**: Navigate your Eagle folder structure (✅ implemented)
-- **Tags**: Browse items by tags (🚧 work in progress)
-- **Index**: Follows Eagle's folder organization index (📋 planned)
-- **Smart Folders**: Access to Eagle smart folders (⏳ pending)
+- **All Items**: Browse all items in your Eagle library (✅ performance-optimized for <5000 items)
+- **Folders**: Navigate your Eagle folder structure with flattened hierarchy (✅ all folders accessible)
+- **Hierarchy**: Hierarchical folder navigation preserving parent-child relationships (✅ implemented)
+- **Tags**: Browse items by tags with full tag support (✅ implemented)
+- **Files**: Direct file access by Eagle ID with mobile client compatibility (✅ implemented)
 - **File Downloads**: Download original files with proper extensions and metadata
 - **Read-Only**: Safe browsing without risk of accidental modifications
+- **Ghost Folder Fix**: Resolved recursive duplicate folder issues (✅ fixed)
 
 ### ⚡ **Performance Optimized**
 - Smart item count checking (returns empty folder if >5000 items for performance)
@@ -68,50 +69,13 @@ Use any WebDAV client app with:
 ### Available Paths
 - `/` - Root directory with main containers
 - `/allItems/` - All items in your library (if ≤5000 items) ✅
-- `/folders/` - Browse by Eagle folders ✅
-- `/tags/` - Browse by tags (🚧 work in progress)
-- `/index/` - Follows Eagle folder organization index (📋 planned)
-- `/smartfolders/` - Smart folder access (⏳ pending)
+- `/folders/` - Browse by Eagle folders (flattened structure) ✅
+- `/hierarchy/` - Hierarchical folder navigation ✅
+- `/tags/` - Browse by tags with full tag support ✅
+- `/files/{id}/` - Direct file access by Eagle ID ✅
+- `/files/{id}/{filename}` - Mobile client compatible URLs ✅
 
-## Technical Details
 
-### Architecture
-- **Built with**: TypeScript, React, Vite, Tailwind CSS
-- **WebDAV Server**: Node.js built-in HTTP module (no external dependencies)
-- **Eagle Integration**: Official Eagle Plugin API
-- **Authentication**: HTTP Basic Auth with secure credential generation
-
-### Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Development mode
-pnpm dev
-
-# Build for production
-pnpm build
-```
-
-### File Structure
-```
-src/
-├── webdav/
-│   ├── server.ts          # Main WebDAV server
-│   ├── background.ts      # Background service
-│   ├── xmlUtils.ts        # Shared XML utilities
-│   ├── eagleUtils.ts      # Eagle API integration
-│   ├── auth/              # Authentication system
-│   └── routes/            # Route handlers
-│       ├── allItems/      # ✅ All items route
-│       └── folders/       # ✅ Folders route
-│       # 🚧 tags/         # (work in progress)
-│       # 📋 index/        # (planned)
-│       # ⏳ smartfolders/ # (pending)
-├── App.tsx                # Main UI component
-└── main.tsx              # Entry point
-```
 
 ## Compatibility
 
@@ -139,10 +103,7 @@ src/
 - Use exact credentials shown in plugin interface
 - Ensure no firewall blocking port 41596
 
-### Large Library Performance
-- If you have >5000 items, the "All Items" folder will be empty for performance
-- Use the "Folders" navigation instead
-- Consider organizing items into folders for better WebDAV browsing
+
 
 ## License
 
