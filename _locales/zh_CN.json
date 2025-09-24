@@ -1,0 +1,33 @@
+{
+    "manifest": {
+        "app": {
+            "name": "Eagle WebDAV"
+        }
+    },
+    "app": {
+        "title": "Eagle WebDAV 服务器",
+        "theme": {
+            "followsEagle": "主题跟随 Eagle"
+        },
+        "server": {
+            "status": "服务器状态",
+            "running": "运行中",
+            "stopped": "已停止",
+            "host": "主机",
+            "port": "端口",
+            "started": "启动时间",
+            "start": "启动",
+            "stop": "停止",
+            "restart": "重启"
+        },
+        "connection": {
+            "title": "连接信息",
+            "serverUrl": "服务器地址",
+            "username": "用户名",
+            "password": "密码",
+            "copy": "复制",
+            "copied": "已复制",
+            "copiedDesc": "文本已复制到剪贴板"
+        }
+    }
+}

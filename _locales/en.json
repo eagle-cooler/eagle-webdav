@@ -1,0 +1,33 @@
+{
+    "manifest": {
+        "app": {
+            "name": "Eagle WebDAV"
+        }
+    },
+    "app": {
+        "title": "Eagle WebDAV Server",
+        "theme": {
+            "followsEagle": "Theme follows Eagle"
+        },
+        "server": {
+            "status": "Server Status",
+            "running": "Running",
+            "stopped": "Stopped",
+            "host": "Host",
+            "port": "Port",
+            "started": "Started",
+            "start": "Start",
+            "stop": "Stop",
+            "restart": "Restart"
+        },
+        "connection": {
+            "title": "Connection Information",
+            "serverUrl": "Server URL",
+            "username": "Username",
+            "password": "Password",
+            "copy": "Copy",
+            "copied": "Copied",
+            "copiedDesc": "Text copied to clipboard"
+        }
+    }
+}

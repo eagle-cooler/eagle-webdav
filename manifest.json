@@ -1,13 +1,15 @@
 {
   "id": "7e4dd5eb-fc2d-4733-afea-ff33852faa8c",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "platform": "all",
   "arch": "all",
-  "name": "Eagle WebDAV",
+  "name": "{{manifest.app.name}}",
   "description": "Expose your Eagle library through WebDAV protocol for remote access and synchronization.",
   "logo": "/logo.jpg",
   "keywords": ["webdav", "server", "remote", "sync", "access"],
   "devTools": true,
+  "languages": ["en", "zh_TW", "zh_CN", "ja_JP", "es_ES", "ru_RU", "de_DE", "ko_KR"],
+  "fallbackLanguage": "en",
   "main": {
     "serviceMode": true,
     "url": "dist/index.html",

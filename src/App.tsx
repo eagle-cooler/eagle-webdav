@@ -5,6 +5,14 @@ import viteLogo from "/vite.svg";
 
 import { backgroundService } from "./webdav/background";
 
+// Helper function to get translation
+const t = (key: string, defaultValue?: string): string => {
+  if (typeof i18next !== 'undefined') {
+    return i18next.t(`app.${key}`, defaultValue || key);
+  }
+  return defaultValue || key;
+};
+
 interface ServiceStatus {
   running: boolean;
   port: number;
@@ -100,8 +108,8 @@ function App() {
     if (typeof eagle !== 'undefined' && eagle.clipboard) {
       eagle.clipboard.writeText(text);
       eagle.notification.show({
-        title: 'Copied',
-        description: 'Text copied to clipboard',
+        title: t('connection.copied', 'Copied'),
+        description: t('connection.copiedDesc', 'Text copied to clipboard'),
         duration: 1500
       });
     } else {
@@ -125,7 +133,7 @@ function App() {
             <img src={viteLogo} className="w-8" alt="Vite logo" />
             <img src={reactLogo} className="w-8" alt="React logo" />
             <img src={eagleLogo} className="w-8" alt="Eagle logo" />
-            <h1 className="text-xl font-bold">Eagle WebDAV Server</h1>
+            <h1 className="text-xl font-bold">{t('title', 'Eagle WebDAV Server')}</h1>
           </div>
           
           {/* Theme indicator (read-only, follows Eagle) */}
@@ -135,7 +143,7 @@ function App() {
             ) : (
               <svg className="w-4 h-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M5.64,17l-.71.71a1,1,0,0,0,0,1.41,1,1,0,0,0,1.41,0l.71-.71A1,1,0,0,0,5.64,17ZM5,12a1,1,0,0,0-1-1H3a1,1,0,0,0,0,2H4A1,1,0,0,0,5,12Zm7-7a1,1,0,0,0,1-1V3a1,1,0,0,0-2,0V4A1,1,0,0,0,12,5ZM5.64,7.05a1,1,0,0,0,.7.29,1,1,0,0,0,.71-.29,1,1,0,0,0,0-1.41l-.71-.71A1,1,0,0,0,4.93,6.34Zm12,.29a1,1,0,0,0,.7-.29l.71-.71a1,1,0,1,0-1.41-1.41L17,5.64a1,1,0,0,0,0,1.41A1,1,0,0,0,17.66,7.34ZM21,11H20a1,1,0,0,0,0,2h1a1,1,0,0,0,0-2Zm-9,8a1,1,0,0,0-1,1v1a1,1,0,0,0,2,0V20A1,1,0,0,0,12,19ZM18.36,17A1,1,0,0,0,17,18.36l.71.71a1,1,0,0,0,1.41,0,1,1,0,0,0,0-1.41ZM12,6.5A5.5,5.5,0,1,0,17.5,12,5.51,5.51,0,0,0,12,6.5Zm0,9A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/></svg>
             )}
-            <span>Theme follows Eagle</span>
+            <span>{t('theme.followsEagle', 'Theme follows Eagle')}</span>
           </div>
         </div>
 
@@ -148,23 +156,23 @@ function App() {
             <div className="card bg-base-200 shadow-lg">
               <div className="card-body p-4">
                 <h2 className="card-title text-lg">
-                  Server Status
+                  {t('server.status', 'Server Status')}
                   <div className={`badge badge-sm ${status?.running ? 'badge-success' : 'badge-error'}`}>
-                    {status?.running ? 'Running' : 'Stopped'}
+                    {status?.running ? t('server.running', 'Running') : t('server.stopped', 'Stopped')}
                   </div>
                 </h2>
                 
                 {status && (
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className="font-semibold">Host:</span> {status.host}
+                      <span className="font-semibold">{t('server.host', 'Host')}:</span> {status.host}
                     </div>
                     <div>
-                      <span className="font-semibold">Port:</span> {status.port}
+                      <span className="font-semibold">{t('server.port', 'Port')}:</span> {status.port}
                     </div>
                     {status.startTime && (
                       <div className="col-span-2">
-                        <span className="font-semibold">Started:</span> {status.startTime.toLocaleTimeString()}
+                        <span className="font-semibold">{t('server.started', 'Started')}:</span> {status.startTime.toLocaleTimeString()}
                       </div>
                     )}
                   </div>
@@ -176,21 +184,21 @@ function App() {
                     onClick={handleStart}
                     disabled={status?.running}
                   >
-                    Start
+                    {t('server.start', 'Start')}
                   </button>
                   <button 
                     className="btn btn-error btn-sm" 
                     onClick={handleStop}
                     disabled={!status?.running}
                   >
-                    Stop
+                    {t('server.stop', 'Stop')}
                   </button>
                   <button 
                     className="btn btn-warning btn-sm" 
                     onClick={handleRestart}
                     disabled={!status?.running}
                   >
-                    Restart
+                    {t('server.restart', 'Restart')}
                   </button>
                 </div>
               </div>
@@ -203,11 +211,11 @@ function App() {
           })() && (
             <div className="card bg-base-200 shadow-lg">
               <div className="card-body p-4">
-                <h2 className="card-title text-lg">Connection Information</h2>
+                <h2 className="card-title text-lg">{t('connection.title', 'Connection Information')}</h2>
                 
                 <div className="space-y-3 text-sm">
                   <div>
-                    <label className="font-semibold block mb-1">Server URL:</label>
+                    <label className="font-semibold block mb-1">{t('connection.serverUrl', 'Server URL')}:</label>
                     <div className="flex gap-1">
                       <input 
                         type="text" 
@@ -219,14 +227,14 @@ function App() {
                         className="btn btn-outline btn-sm px-2"
                         onClick={() => copyToClipboard(connectionInfo?.url || '')}
                       >
-                        Copy
+                        {t('connection.copy', 'Copy')}
                       </button>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="font-semibold block mb-1">Username:</label>
+                      <label className="font-semibold block mb-1">{t('connection.username', 'Username')}:</label>
                       <div className="flex gap-1">
                         <input 
                           type="text" 
@@ -238,12 +246,12 @@ function App() {
                           className="btn btn-outline btn-sm px-2"
                           onClick={() => copyToClipboard(connectionInfo?.username || '')}
                         >
-                          Copy
+                          {t('connection.copy', 'Copy')}
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label className="font-semibold block mb-1">Password:</label>
+                      <label className="font-semibold block mb-1">{t('connection.password', 'Password')}:</label>
                       <div className="flex gap-1">
                         <input 
                           type="password" 
@@ -255,7 +263,7 @@ function App() {
                           className="btn btn-outline btn-sm px-2"
                           onClick={() => copyToClipboard(connectionInfo?.password || '')}
                         >
-                          Copy
+                          {t('connection.copy', 'Copy')}
                         </button>
                       </div>
                     </div>

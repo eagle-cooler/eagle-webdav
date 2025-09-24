@@ -1,0 +1,33 @@
+{
+    "manifest": {
+        "app": {
+            "name": "Eagle WebDAV"
+        }
+    },
+    "app": {
+        "title": "Eagle WebDAV サーバー",
+        "theme": {
+            "followsEagle": "テーマは Eagle に従います"
+        },
+        "server": {
+            "status": "サーバーステータス",
+            "running": "実行中",
+            "stopped": "停止",
+            "host": "ホスト",
+            "port": "ポート",
+            "started": "開始時刻",
+            "start": "開始",
+            "stop": "停止",
+            "restart": "再起動"
+        },
+        "connection": {
+            "title": "接続情報",
+            "serverUrl": "サーバーURL",
+            "username": "ユーザー名",
+            "password": "パスワード",
+            "copy": "コピー",
+            "copied": "コピー済み",
+            "copiedDesc": "テキストがクリップボードにコピーされました"
+        }
+    }
+}
