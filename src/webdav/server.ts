@@ -7,6 +7,8 @@ import { authenticateWebDAV, getServerCredentials } from './auth/auth';
 import { handleFolderGET, handleFolderPROPFIND } from './routes/folders';
 import { handleAllItemsGET, handleAllItemsPROPFIND } from './routes/allItems';
 import { handleFilesGET, handleFilesPROPFIND, handleFilesHEAD } from './routes/files';
+import { handleIndexGET, handleIndexPROPFIND } from './routes/hierarchy';
+import { handleTagsGET, handleTagsPROPFIND } from './routes/tags';
 import { getRootContainer } from './eagleUtils';
 import { generateFolderContentXML } from './routes/folders/xml';
 
@@ -150,15 +152,15 @@ export class EagleWebDAVServer {
     } else if (pathname === '/allItems' || pathname === '/allItems/' || pathname.startsWith('/allItems/')) {
       // Use allItems route handler (handles both collection requests and file requests within allItems)
       await handleAllItemsGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
-    } else if (pathname === '/uncategorized' || pathname === '/uncategorized/') {
-      // Collections can't be downloaded, only browsed via PROPFIND
-      this.sendMethodNotAllowedForCollection(res, pathname);
     } else if (pathname === '/folders' || pathname === '/folders/' || pathname.startsWith('/folders/')) {
       // Use folder route handler (handles both folder requests and file requests within folders)
       await handleFolderGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
-    } else if (pathname === '/tags' || pathname === '/tags/') {
-      // Collections can't be downloaded, only browsed via PROPFIND
-      this.sendMethodNotAllowedForCollection(res, pathname);
+    } else if (pathname === '/hierarchy' || pathname === '/hierarchy/' || pathname.startsWith('/hierarchy/')) {
+      // Use hierarchy route handler (handles hierarchical folder structure and file requests)
+      await handleIndexGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
+    } else if (pathname === '/tags' || pathname === '/tags/' || pathname.startsWith('/tags/')) {
+      // Use tags route handler (handles both tag requests and file requests within tags)
+      await handleTagsGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
     } else if (pathname.startsWith('/files/')) {
       // Use files route handler
       await handleFilesGET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
@@ -191,17 +193,15 @@ export class EagleWebDAVServer {
         } else if (pathname === '/allItems' || pathname === '/allItems/' || pathname.startsWith('/allItems/')) {
           // Use allItems route handler (handles both collection and individual file PROPFIND)
           await handleAllItemsPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this), this.generateSingleFilePROPFIND.bind(this));
-        } else if (pathname === '/uncategorized' || pathname === '/uncategorized/') {
-          // TODO: Implement uncategorized PROPFIND
-          const xml = generateFolderContentXML(pathname, [], isDepthZero, 'Uncategorized');
-          this.sendXMLResponse(res, 207, xml);
         } else if (pathname === '/folders' || pathname === '/folders/') {
           // Use folder route handler
           await handleFolderPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this));
-        } else if (pathname === '/tags' || pathname === '/tags/') {
-          // TODO: Implement tags PROPFIND
-          const xml = generateFolderContentXML(pathname, [], isDepthZero, 'Tags');
-          this.sendXMLResponse(res, 207, xml);
+        } else if (pathname === '/hierarchy' || pathname === '/hierarchy/' || pathname.startsWith('/hierarchy/')) {
+          // Use hierarchy route handler (handles hierarchical folder structure PROPFIND)
+          await handleIndexPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this), this.generateSingleFilePROPFIND.bind(this));
+        } else if (pathname === '/tags' || pathname === '/tags/' || pathname.startsWith('/tags/')) {
+          // Use tags route handler
+          await handleTagsPROPFIND(pathname, req, res);
         } else if (pathname.startsWith('/folders/')) {
           // Use folder route handler
           await handleFolderPROPFIND(pathname, req, res, this.sendXMLResponse.bind(this));

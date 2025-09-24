@@ -64,7 +64,7 @@ export function generateFolderContentXML(pathname: string, items: any[], isDepth
   
   // Only add the requested resource itself for root paths or when depth is 0
   // For specific folders, skip this to prevent WebDAV clients from showing duplicate entries
-  const shouldIncludeCurrentDirectory = pathname === '/' || pathname === '/folders' || pathname === '/allItems' || pathname === '/tags' || pathname === '/uncategorized' || isDepthZero;
+  const shouldIncludeCurrentDirectory = pathname === '/' || pathname === '/folders' || pathname === '/allItems' || pathname === '/tags' || isDepthZero;
   
   if (shouldIncludeCurrentDirectory) {
     // Add the requested resource itself (the current directory)
@@ -105,9 +105,9 @@ export function generateFolderContentXML(pathname: string, items: any[], isDepth
       if (item.children !== undefined) {
         // It's a folder - check if it's a root container or actual Eagle folder
         isFolder = true;
-        
-        // Root containers (allItems, uncategorized, folders, tags) should use their own paths
-        if (item.id && ['allItems', 'uncategorized', 'folders', 'tags'].includes(item.id)) {
+
+        // Root containers (allItems, folders, hierarchy, tags) should use their own paths
+        if (item.id && ['allItems', 'folders', 'hierarchy', 'tags'].includes(item.id)) {
           itemPath = item.path || `/${item.name}`;
           displayName = item.name;
         } else {

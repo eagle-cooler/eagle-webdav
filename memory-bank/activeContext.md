@@ -4,24 +4,164 @@
 - **Route-based architecture** with clean separation of concerns
 - **Batch downloads working** across all WebDAV clients (desktop, mobile)
 - **Universal client compatibility** - works with Windows, macOS, Android clients
+- **Hierarchy route completed** - hierarchical folder navigation with proper URL encoding
+- **Tags route completed** - tag-based file browsing and serving ✅ NEW
 
 ## File Access Patterns
 1. **ID-based**: `/files/{id}/{filename}` (direct Eagle ID access)
-2. **Folder-based**: `/folders/{folderName}/{filename}` (folder navigation)
-3. **Collection-based**: `/allItems/{filename}` (all items browsing)
+2. **Folder-based**: `/folders/{folderName}/{filename}` (flat folder navigation)
+3. **Hierarchical**: `/hierarchy/{folder1}/{subfolder}/{filename}` (parent-child relationships) ✅ COMPLETE
+4. **Collection-based**: `/allItems/{filename}` (all items browsing)
+5. **Tag-based**: `/tags/{tagName}/{filename}` (organize by tags) ✅ NEW
 
 ## Working Routes
-- **`/folders/`**: Browse Eagle folders + download files within folders
-- **`/allItems/`**: Browse all items + download any file by name  
-- **`/files/`**: Direct file access using Eagle IDs
+- **`/folders/`**: Browse Eagle folders (flat structure) + download files within folders ✅
+- **`/hierarchy/`**: Browse Eagle folders (hierarchical structure) + download files within hierarchy ✅  
+- **`/allItems/`**: Browse all items + download any file by name ✅
+- **`/files/`**: Direct file access using Eagle IDs ✅
+- **`/tags/`**: Browse and download files by tag organization ✅ NEW
 
-## Recent Fixes
-- **Route Architecture**: Moved from centralized file serving to route-based handlers
-- **Batch Downloads**: Added file search logic to folder and allItems routes
-- **Mobile Compatibility**: Filename display working on Android WebDAV apps
-- **Error Handling**: Proper 405/404 responses for collections vs files
+## Recent Implementation - Hierarchy Route ✅ COMPLETED
 
-**Key Implementation**:
+### Route Implementation Details
+- **Path**: `/hierarchy/` - Provides hierarchical folder navigation preserving parent-child relationships
+- **Files Created**:
+  - `/src/webdav/hierarchy/index.ts` - Route handlers (GET/PROPFIND)
+  - `/src/webdav/hierarchy/xml.ts` - XML generation utilities
+- **Server Integration**: Added to server.ts routing for both GET and PROPFIND methods
+- **Root Container**: Added "hierarchy" to root container listing
+
+### Critical URL Encoding Fix ✅
+**Problem**: WebDAV client accessing `/hierarchy/demo%2520video/` (double-encoded) failing to find folder
+**Root Cause**: Hierarchy route not using proven URL decoding pattern from folders route  
+**Solution Applied**: Used exact same pattern from folders route: `decodeURIComponent(pathname.substring(11).replace(/\\/$/, ''))`
+
+**Key Pattern (DO NOT CHANGE)**:
+```typescript
+// Folders route pattern (WORKING)
+const folderName = decodeURIComponent(pathname.substring(9).replace(/\\/$/, ''));
+
+// Hierarchy route pattern (NOW WORKING)  
+const hierarchyPath = decodeURIComponent(pathname.substring(11).replace(/\\/$/, ''));
+```
+
+### WebDAV Client Navigation Fix ✅
+**Problem**: Client trying `/folders/hierarchy/` instead of `/hierarchy/`
+**Root Cause**: Missing "hierarchy" from root containers array in generateFolderContentXML
+**Solution**: Added 'hierarchy' to root containers array: `['allItems', 'folders', 'hierarchy', 'tags']`
+
+### Hierarchy Route Features ✅
+- **Hierarchical Structure**: Preserves Eagle's parent-child folder relationships
+- **URL Encoding**: Proper handling of spaces and special characters in folder names
+- **File Serving**: Direct file access within hierarchical paths like `/hierarchy/ProjectA/Subfolder/file.jpg`
+- **WebDAV Compliance**: Full PROPFIND and GET support following established patterns
+- **Error Handling**: Proper WebDAV XML error responses
+
+## Recent Implementation - Tags Route ✅ COMPLETED
+
+### Route Implementation Details
+- **Path**: `/tags/` - Provides tag-based file browsing and organization
+- **Files Created**:
+  - `/src/webdav/routes/tags/index.ts` - Route handlers (GET/PROPFIND)
+  - `/src/webdav/routes/tags/xml.ts` - XML generation utilities
+  - Added `getTagsWithItems()` and `getItemsByTag()` utilities to `eagleUtils.ts`
+- **Server Integration**: Added to server.ts routing for both GET and PROPFIND methods
+- **Root Container**: Already included "tags" in root container listing
+
+### Eagle API Integration ✅
+**Tags API Usage**:
+```typescript
+// Get all tags
+const tags = await eagle.tag.get();
+
+// Get items with specific tag
+const items = await eagle.item.get({ tags: [tagName] });
+```
+
+### Tags Route Features ✅
+- **Tag Browsing**: Browse all available tags as folders
+- **File Organization**: Files organized by tag categories
+- **File Serving**: Direct file access within tags like `/tags/nature/sunset.jpg`
+- **WebDAV Compliance**: Full PROPFIND and GET support following established patterns
+- **URL Encoding**: Proper handling of tag names with spaces and special characters
+
+## CRITICAL IMPLEMENTATION PATTERNS ⚠️
+*These patterns are proven to work. DO NOT CHANGE without compelling reason.*
+
+### URL Decoding Pattern (MANDATORY)
+**Problem**: WebDAV clients send URL-encoded paths with spaces/special characters
+**Solution**: Use exact pattern from working routes
+```typescript
+// For routes starting with /folders/ (9 chars)
+const folderName = decodeURIComponent(pathname.substring(9).replace(/\/$/, ''));
+
+// For routes starting with /hierarchy/ (11 chars)  
+const hierarchyPath = decodeURIComponent(pathname.substring(11).replace(/\/$/, ''));
+
+// For routes starting with /allItems/ (10 chars)
+const filename = decodeURIComponent(pathname.substring(10));
+```
+
+**CRITICAL**: 
+- Always decode ONCE at path parsing level
+- Don't decode again in file/folder search functions
+- Use `substring(N).replace(/\/$/, '')` pattern exactly
+
+### Root Container Management (MANDATORY)
+**File**: `webdav/routes/folders/xml.ts`, function `generateFolderContentXML`
+**Root containers array**: `['allItems', 'folders', 'hierarchy', 'tags']`
+
+**CRITICAL**: 
+- New root-level routes MUST be added to this array
+- Missing routes will be treated as Eagle folders and get wrong href paths
+- This causes WebDAV client confusion (tries `/folders/hierarchy/` instead of `/hierarchy/`)
+
+### Response Pattern (MANDATORY)
+**Working Pattern** (use this exactly):
+```typescript
+// For PROPFIND responses
+res.writeHead(207, {
+  'Content-Type': 'application/xml; charset=utf-8',
+  'Access-Control-Allow-Origin': '*'
+});
+res.end(xmlResponse);
+
+// For error responses  
+res.writeHead(404, {
+  'Content-Type': 'application/xml; charset=utf-8',
+  'Access-Control-Allow-Origin': '*'
+});
+res.end(errorXML);
+```
+
+**CRITICAL**: 
+- Don't use `sendXMLResponse()` helper - use direct `res.writeHead()/res.end()`
+- AllItems route works with this pattern - hierarchy route fixed to match
+- Status 207 for Multi-Status, 404 for Not Found, 405 for Method Not Allowed
+
+### File Serving Pattern (MANDATORY)
+**For route handlers serving files**:
+```typescript
+// 1. Extract and decode path
+const decodedPath = decodeURIComponent(pathname.substring(N).replace(/\/$/, ''));
+
+// 2. Parse into folder + filename
+const pathParts = decodedPath.split('/').filter(part => part);
+const filename = pathParts[pathParts.length - 1];
+const folderPath = '/' + pathParts.slice(0, -1).join('/');
+
+// 3. Search files in folder children
+for (const item of folder.children) {
+  if ('size' in item && item.size !== undefined) { // It's a file
+    const itemFilename = item.name + (item.ext ? '.' + item.ext : '');
+    if (itemFilename === filename || itemFilename.toLowerCase() === filename.toLowerCase()) {
+      // Found file - serve it
+    }
+  }
+}
+```
+
+## Previous Solved Issues (DO NOT REINTRODUCE)
 1. **URL Format Change**: `/files/{id}` → `/files/{id}/{filename}`
 2. **Server Parsing**: Extract ID from first path segment, support both old/new formats
 3. **URL Encoding**: Use `encodeURI()` for special characters in filenames

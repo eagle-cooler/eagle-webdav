@@ -59,6 +59,14 @@ async function handleFolderFileRequest(
   try {
     console.log(`[DEBUG] Looking for file "${filename}" in folder "${folderName}"`);
     
+    // Check if this is a reserved container name (should not be accessed via /folders/)
+    const reservedNames = ['hierarchy', 'allItems', 'tags'];
+    if (reservedNames.includes(folderName)) {
+      console.log(`[DEBUG] Rejecting file access to reserved container "${folderName}" via /folders/ route`);
+      sendResponse(res, 404, { error: 'Folder not found' });
+      return;
+    }
+    
     // Get the folder
     const folder = await getFolderByName(folderName);
     if (!folder) {
@@ -157,6 +165,15 @@ export async function handleFolderPROPFIND(
         'Access-Control-Allow-Origin': '*'
       });
       res.end(xmlResponse);
+      return;
+    }
+    
+    // Check if this is a reserved container name (should not be accessed via /folders/)
+    const reservedNames = ['hierarchy', 'allItems', 'tags'];
+    if (reservedNames.includes(folderName)) {
+      console.log(`[DEBUG] Rejecting access to reserved container "${folderName}" via /folders/ route`);
+      const errorXML = '<?xml version="1.0" encoding="utf-8"?>\n<D:error xmlns:D="DAV:"><D:response><D:status>HTTP/1.1 404 Not Found</D:status></D:response></D:error>';
+      sendXMLResponse(res, 404, errorXML);
       return;
     }
     

@@ -44,7 +44,7 @@ export function getMimeType(ext?: string): string {
 
 /**
  * Gets the main containers for the root level
- * @returns Array of main WebDAV containers (allItems, uncategorized, folders, tags)
+ * @returns Array of main WebDAV containers (allItems, folders, index, tags)
  */
 export async function getRootContainer(): Promise<EagleWebDAVFolder[]> {
   return [
@@ -56,16 +56,16 @@ export async function getRootContainer(): Promise<EagleWebDAVFolder[]> {
       children: []
     },
     {
-      id: 'uncategorized',
-      name: 'uncategorized', 
-      path: '/uncategorized',
+      id: 'folders',
+      name: 'folders',
+      path: '/folders',
       lastModified: new Date(),
       children: []
     },
     {
-      id: 'folders',
-      name: 'folders',
-      path: '/folders',
+      id: 'hierarchy',
+      name: 'hierarchy',
+      path: '/hierarchy',
       lastModified: new Date(),
       children: []
     },
@@ -330,6 +330,306 @@ export async function getAllEagleItems(): Promise<EagleWebDAVFile[]> {
     } else {
       console.error(`Failed to get all Eagle items: ${error}`);
     }
+    return [];
+  }
+}
+
+/**
+ * Gets Eagle folders in hierarchical structure (preserving parent-child relationships)
+ * Different from getAllEagleFolders() which flattens all folders
+ * @returns Array of root-level Eagle WebDAV folders with nested children
+ */
+export async function getHierarchicalFolders(): Promise<EagleWebDAVFolder[]> {
+  if (typeof eagle === 'undefined') {
+    return [];
+  }
+  
+  try {
+    const folders = await eagle.folder.getAll();
+                    
+    if (!folders || !Array.isArray(folders)) {
+      console.warn('[DEBUG] No folders returned from Eagle API or not an array');
+      return [];
+    }
+    
+    console.log(`[DEBUG] Got hierarchical folders structure with ${folders.length} root folders`);
+    
+    // Convert Eagle folders to WebDAV format while preserving hierarchy
+    const result = await convertFoldersToWebDAV(folders);
+    return result;
+  } catch (error) {
+    console.error('[DEBUG] Error getting hierarchical folders:', error);
+    return [];
+  }
+}
+
+/**
+ * Recursively converts Eagle folders to WebDAV format preserving hierarchy
+ * @param folders Array of Eagle folders (may have nested children)
+ * @returns Array of WebDAV folders with children
+ */
+async function convertFoldersToWebDAV(folders: any[]): Promise<EagleWebDAVFolder[]> {
+  const webdavFolders: EagleWebDAVFolder[] = [];
+  
+  for (const folder of folders) {
+    try {
+      // Get folder contents (files)
+      const folderContents = await getFolderById(folder.id);
+      const children: (EagleWebDAVFile | EagleWebDAVFolder)[] = [];
+      
+      // Add files from this folder
+      if (folderContents && folderContents.children) {
+        for (const item of folderContents.children) {
+          if ('size' in item && item.size !== undefined) {
+            // This is a file
+            children.push(item as EagleWebDAVFile);
+          }
+        }
+      }
+      
+      // Add child folders (convert recursively)
+      if (folder.children && Array.isArray(folder.children) && folder.children.length > 0) {
+        const childFolders = await convertFoldersToWebDAV(folder.children);
+        children.push(...childFolders);
+      }
+      
+      const webdavFolder: EagleWebDAVFolder = {
+        id: folder.id,
+        name: folder.name,
+        path: buildHierarchicalPath(folder),
+        lastModified: new Date(folder.createdAt),
+        children: children
+      };
+      
+      webdavFolders.push(webdavFolder);
+    } catch (error) {
+      console.error(`[DEBUG] Error converting folder ${folder.id}:`, error);
+      // Skip this folder if there's an error
+      continue;
+    }
+  }
+  
+  return webdavFolders;
+}
+
+/**
+ * Builds hierarchical path for a folder based on its position in the tree
+ * @param folder Eagle folder object
+ * @returns Path string like '/folder1/subfolder2'
+ */
+function buildHierarchicalPath(folder: any, parentPath: string = ''): string {
+  const currentPath = parentPath + '/' + folder.name;
+  return currentPath;
+}
+
+/**
+ * Gets a folder by its hierarchical path from the Eagle API
+ * @param path The hierarchical path (e.g., '/folder1/subfolder2')
+ * @returns Eagle WebDAV folder or null if not found
+ */
+export async function getFolderByPath(path: string): Promise<EagleWebDAVFolder | null> {
+  try {
+    if (typeof eagle === 'undefined') return null;
+    
+    console.log(`[DEBUG] Getting folder by hierarchical path: ${path}`);
+    
+    // Handle root path
+    if (path === '/' || path === '') {
+      return {
+        id: 'root',
+        name: 'Index',
+        path: '/',
+        lastModified: new Date(),
+        children: await getHierarchicalFolders()
+      };
+    }
+    
+    // Split path into segments
+    const pathSegments = path.split('/').filter(segment => segment);
+    
+    if (pathSegments.length === 0) {
+      return null;
+    }
+    
+    // Get all folders in hierarchical structure
+    const rootFolders = await eagle.folder.getAll();
+    if (!rootFolders || !Array.isArray(rootFolders)) {
+      return null;
+    }
+    
+    // Navigate through the hierarchy
+    let currentFolders = rootFolders;
+    let targetFolder: any = null;
+    
+    for (let i = 0; i < pathSegments.length; i++) {
+      const segmentName = pathSegments[i];
+      targetFolder = null;
+      
+      // Find folder with matching name at current level
+      for (const folder of currentFolders) {
+        if (folder.name === segmentName) {
+          targetFolder = folder;
+          break;
+        }
+      }
+      
+      if (!targetFolder) {
+        console.log(`[DEBUG] Folder segment not found: ${segmentName} at path level ${i}`);
+        return null;
+      }
+      
+      // If this is not the last segment, move to children for next iteration
+      if (i < pathSegments.length - 1) {
+        if (targetFolder.children && Array.isArray(targetFolder.children)) {
+          currentFolders = targetFolder.children;
+        } else {
+          console.log(`[DEBUG] No children found for folder: ${segmentName}`);
+          return null;
+        }
+      }
+    }
+    
+    if (!targetFolder) {
+      return null;
+    }
+    
+    // Get the full folder with contents
+    const folderContents = await getFolderById(targetFolder.id);
+    if (!folderContents) {
+      return null;
+    }
+
+    // For hierarchy navigation, only include FILES, not subfolders
+    // This prevents ghost folder issues and keeps hierarchy navigation clean
+    const children: (EagleWebDAVFile | EagleWebDAVFolder)[] = [];
+    
+    if (folderContents.children) {
+      for (const item of folderContents.children) {
+        // Only add files (items with size property), not folders (items with children property)
+        if ('size' in item && item.size !== undefined && !('children' in item)) {
+          children.push(item);
+        }
+      }
+    }
+
+    return {
+      id: targetFolder.id,
+      name: targetFolder.name,
+      path: path,
+      lastModified: new Date(targetFolder.createdAt),
+      children: children
+    };
+  } catch (error) {
+    console.error(`[DEBUG] Error getting folder by path ${path}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Gets all tags with their associated items for the /tags route
+ * @returns Array of tag objects with associated files
+ */
+export async function getTagsWithItems(): Promise<{ id: string; name: string; items: EagleWebDAVFile[] }[]> {
+  if (typeof eagle === 'undefined') {
+    return [];
+  }
+  
+  try {
+    console.log('[DEBUG] Getting all tags for tags route');
+    
+    // Get all tags from Eagle
+    const tags = await eagle.tag.get();
+    if (!tags || !Array.isArray(tags)) {
+      console.warn('[DEBUG] No tags returned from Eagle API or not an array');
+      return [];
+    }
+    
+    console.log(`[DEBUG] Found ${tags.length} tags in Eagle library`);
+    
+    const result: { id: string; name: string; items: EagleWebDAVFile[] }[] = [];
+    
+    // For each tag, get all items with that tag
+    for (const tag of tags) {
+      try {
+        console.log(`[DEBUG] Getting items for tag: ${tag.name}`);
+        
+        // Get all items that have this specific tag
+        const items = await eagle.item.get({ tags: [tag.name] });
+        
+        if (!items || !Array.isArray(items)) {
+          console.log(`[DEBUG] No items found for tag: ${tag.name}`);
+          continue;
+        }
+        
+        // Convert Eagle items to WebDAV format
+        const webdavFiles: EagleWebDAVFile[] = items.map(item => ({
+          id: item.id,
+          name: item.name,
+          size: item.size || 0,
+          mimeType: getMimeType(item.ext),
+          path: item.filePath,
+          lastModified: new Date(item.importedAt),
+          ext: item.ext
+        }));
+        
+        console.log(`[DEBUG] Tag "${tag.name}" has ${webdavFiles.length} items`);
+        
+        result.push({
+          id: tag.id,
+          name: tag.name,
+          items: webdavFiles
+        });
+      } catch (error) {
+        console.error(`[DEBUG] Error getting items for tag ${tag.name}:`, error);
+        // Continue with next tag
+        continue;
+      }
+    }
+    
+    console.log(`[DEBUG] Processed ${result.length} tags with items`);
+    return result;
+  } catch (error) {
+    console.error('[DEBUG] Error getting tags with items:', error);
+    return [];
+  }
+}
+
+/**
+ * Gets items for a specific tag by tag name
+ * @param tagName The tag name
+ * @returns Array of Eagle WebDAV files with this tag
+ */
+export async function getItemsByTag(tagName: string): Promise<EagleWebDAVFile[]> {
+  if (typeof eagle === 'undefined') {
+    return [];
+  }
+  
+  try {
+    console.log(`[DEBUG] Getting items for specific tag: ${tagName}`);
+    
+    // Get all items that have this specific tag
+    const items = await eagle.item.get({ tags: [tagName] });
+    
+    if (!items || !Array.isArray(items)) {
+      console.log(`[DEBUG] No items found for tag: ${tagName}`);
+      return [];
+    }
+    
+    // Convert Eagle items to WebDAV format
+    const webdavFiles: EagleWebDAVFile[] = items.map(item => ({
+      id: item.id,
+      name: item.name,
+      size: item.size || 0,
+      mimeType: getMimeType(item.ext),
+      path: item.filePath,
+      lastModified: new Date(item.importedAt),
+      ext: item.ext
+    }));
+    
+    console.log(`[DEBUG] Tag "${tagName}" has ${webdavFiles.length} items`);
+    return webdavFiles;
+  } catch (error) {
+    console.error(`[DEBUG] Error getting items for tag ${tagName}:`, error);
     return [];
   }
 }

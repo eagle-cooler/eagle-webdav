@@ -18,7 +18,6 @@ A background service plugin for Eagle that exposes your Eagle library content vi
 - **All Items**: Browse all items in your Eagle library (✅ implemented, performance-optimized for <5000 items)
 - **Folders**: Navigate your Eagle folder structure (✅ implemented)
 - **Tags**: Browse items by tags (🚧 work in progress)
-- **Uncategorized**: Access items not assigned to folders (🚧 work in progress)
 - **Index**: Follows Eagle's folder organization index (📋 planned)
 - **Smart Folders**: Access to Eagle smart folders (⏳ pending)
 - **File Downloads**: Download original files with proper extensions and metadata
@@ -71,7 +70,6 @@ Use any WebDAV client app with:
 - `/allItems/` - All items in your library (if ≤5000 items) ✅
 - `/folders/` - Browse by Eagle folders ✅
 - `/tags/` - Browse by tags (🚧 work in progress)
-- `/uncategorized/` - Items without folders (🚧 work in progress)
 - `/index/` - Follows Eagle folder organization index (📋 planned)
 - `/smartfolders/` - Smart folder access (⏳ pending)
 
@@ -109,7 +107,6 @@ src/
 │       ├── allItems/      # ✅ All items route
 │       └── folders/       # ✅ Folders route
 │       # 🚧 tags/         # (work in progress)
-│       # 🚧 uncategorized/ # (work in progress)
 │       # 📋 index/        # (planned)
 │       # ⏳ smartfolders/ # (pending)
 ├── App.tsx                # Main UI component

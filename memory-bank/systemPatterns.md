@@ -32,6 +32,8 @@ export async function handle{Name}PROPFIND(
 - **`/folders/`**: Folder navigation + file serving (`/folders/{name}/{file}`)
 - **`/allItems/`**: All items browsing + file serving (`/allItems/{file}`)  
 - **`/files/`**: Direct file access by ID (`/files/{id}/{file}`)
+- **`/hierarchy/`**: Hierarchical folder navigation + file serving (`/hierarchy/{path}/{file}`)
+- **`/tags/`**: Tag-based browsing + file serving (`/tags/{tagName}/{file}`) ✅ NEW
 
 ### Adding New Routes
 1. Create `/routes/{name}/index.ts` with handlers
@@ -39,6 +41,28 @@ export async function handle{Name}PROPFIND(
 3. Add route imports to `server.ts`
 4. Add delegation in `handleGetRequest()` and `handlePropfindRequest()`
 5. Handle collection (405) vs file (search+serve) requests
+6. **CRITICAL**: Add route name to root containers array in `routes/folders/xml.ts`
+
+### CRITICAL Implementation Requirements ⚠️
+**URL Decoding Pattern** (use exactly):
+```typescript
+const decodedPath = decodeURIComponent(pathname.substring(N).replace(/\/$/, ''));
+```
+
+**Root Container Management** (must update):
+```typescript  
+// In routes/folders/xml.ts - must include ALL route names
+['allItems', 'folders', 'hierarchy', 'tags']
+```
+
+**Response Pattern** (use exactly):
+```typescript
+res.writeHead(207, {
+  'Content-Type': 'application/xml; charset=utf-8',
+  'Access-Control-Allow-Origin': '*'
+});
+res.end(xmlResponse);
+```
 
 ## Key Utilities
 - **`eagleUtils.ts`**: Eagle API integration (`getFileById`, `getFolderByName`, etc.)
@@ -109,6 +133,10 @@ Server Parsing:
 eagle.folder.getAll() → Root folders
 eagle.folder.getById(id) → Specific folder + children
 eagle.item.get({folders: [id]}) → Items in folder
+
+// Tags Structure ✅ NEW
+eagle.tag.get() → All tags
+eagle.item.get({tags: [tagName]}) → Items with specific tag
 
 // File Access
 eagle.item.getById(id) → Item metadata

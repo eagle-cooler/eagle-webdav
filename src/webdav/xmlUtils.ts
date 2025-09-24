@@ -144,11 +144,13 @@ export function generateContentType(mimeType: string): string {
 
 /**
  * Generates a WebDAV href element
- * @param path The path to include (will be URL-encoded)
+ * @param path The path to include (spaces converted to underscores, then URL-encoded)
  * @returns WebDAV href XML element
  */
 export function generateHref(path: string): string {
-  const encodedPath = encodeURI(path);
+  // Convert spaces to underscores to avoid URL encoding issues
+  const pathWithUnderscores = convertSpacesToUnderscores(path);
+  const encodedPath = encodeURI(pathWithUnderscores);
   return `    <D:href>${encodedPath}</D:href>\n`;
 }
 
@@ -174,4 +176,24 @@ export function generateErrorXML(statusCode: number, message: string): string {
     `    <D:status>HTTP/1.1 ${statusCode} ${message}</D:status>\n` +
     '  </D:response>\n' +
     '</D:error>\n';
+}
+
+/**
+ * Converts underscores back to spaces in paths
+ * Use this when parsing incoming WebDAV paths that used underscores to avoid URL encoding
+ * @param path Path with underscores
+ * @returns Path with spaces
+ */
+export function convertUnderscoresToSpaces(path: string): string {
+  return path.replace(/_/g, ' ');
+}
+
+/**
+ * Converts spaces to underscores in paths
+ * Use this when generating href paths to avoid URL encoding issues
+ * @param path Path with spaces
+ * @returns Path with underscores
+ */
+export function convertSpacesToUnderscores(path: string): string {
+  return path.replace(/ /g, '_');
 }
