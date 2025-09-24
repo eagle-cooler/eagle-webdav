@@ -143,15 +143,52 @@ export function generateContentType(mimeType: string): string {
 }
 
 /**
+ * Checks if a path is already URL-encoded
+ * @param path The path to check
+ * @returns True if the path appears to be already encoded
+ */
+function isAlreadyEncoded(path: string): boolean {
+  // If no % characters, definitely not encoded
+  if (!path.includes('%')) {
+    return false;
+  }
+  
+  try {
+    // Try to decode and see if it changes
+    const decoded = decodeURIComponent(path);
+    // If decoding changes the string, it was encoded
+    // If decoding doesn't change it, it probably wasn't properly encoded
+    return decoded !== path;
+  } catch (e) {
+    // If decoding fails, assume it's malformed encoding, treat as not encoded
+    return false;
+  }
+}
+
+/**
+ * Generates a WebDAV href path (without XML tags)
+ * @param path The path to include (will be URL-encoded if not already encoded)
+ * @returns URL-encoded path string
+ */
+export function generateHrefPath(path: string): string {
+  // If the path is already properly encoded, don't encode again
+  if (isAlreadyEncoded(path)) {
+    return path;
+  }
+  
+  // Otherwise, encode it normally
+  const encodedPath = encodeURI(path);
+  return encodedPath;
+}
+
+/**
  * Generates a WebDAV href element
- * @param path The path to include (spaces converted to underscores, then URL-encoded)
+ * @param path The path to include (URL-encoded)
  * @returns WebDAV href XML element
  */
 export function generateHref(path: string): string {
-  // Convert spaces to underscores to avoid URL encoding issues
-  const pathWithUnderscores = convertSpacesToUnderscores(path);
-  const encodedPath = encodeURI(pathWithUnderscores);
-  return `    <D:href>${encodedPath}</D:href>\n`;
+  const hrefPath = generateHrefPath(path);
+  return `    <D:href>${hrefPath}</D:href>\n`;
 }
 
 /**
@@ -196,4 +233,50 @@ export function convertUnderscoresToSpaces(path: string): string {
  */
 export function convertSpacesToUnderscores(path: string): string {
   return path.replace(/ /g, '_');
+}
+
+/**
+ * Recursively decodes a URL-encoded path until no more encoding is detected
+ * This handles cases where paths get encoded multiple times (demo%252520video → demo video)
+ * @param path The encoded path to decode
+ * @returns Fully decoded path
+ */
+export function recursiveDecodeURI(path: string): string {
+  let decoded = path;
+  let previousDecoded = '';
+  
+  // Keep decoding until we get the same result twice (fully decoded)
+  while (decoded !== previousDecoded && decoded.includes('%')) {
+    previousDecoded = decoded;
+    try {
+      decoded = decodeURIComponent(decoded);
+    } catch (e) {
+      // If decoding fails, return the last valid decoded version
+      break;
+    }
+  }
+  
+  return decoded;
+}
+
+/**
+ * Normalizes a path by recursively decoding it and trimming whitespace
+ * This ensures that paths with different encoding levels are treated as the same
+ * Examples:
+ * - "demo video" → "demo video"  
+ * - "demo%20video" → "demo video"
+ * - "demo%2520video" → "demo video"
+ * - "demo%252520video" → "demo video"
+ * @param path The path to normalize
+ * @returns Normalized path
+ */
+export function normalizePath(path: string): string {
+  // Remove leading/trailing slashes and whitespace
+  const cleanPath = path.replace(/^\/+|\/+$/g, '').trim();
+  
+  // Recursively decode to handle multiple encoding levels
+  const decodedPath = recursiveDecodeURI(cleanPath);
+  
+  // Return the normalized path
+  return decodedPath;
 }

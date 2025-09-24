@@ -1,5 +1,6 @@
 import { getHierarchicalFolders, getFolderByPath, getFileById } from '../../eagleUtils';
 import { generateIndexContentXML } from './xml';
+import { normalizePath } from '../../xmlUtils';
 
 /**
  * Handles GET requests for hierarchy routes - including file serving within hierarchy
@@ -19,18 +20,10 @@ export async function handleIndexGET(
     sendResponse(res, 405, { error: 'Method not allowed on collections' });
   } else if (pathname.startsWith('/hierarchy/')) {
     // File or folder within hierarchy
-    let hierarchyPath = decodeURIComponent(pathname.substring(11).replace(/\/$/, '')); // Remove '/hierarchy/' prefix
+    let hierarchyPath = pathname.substring(11).replace(/\/$/, ''); // Remove '/hierarchy/' prefix
     
-    // Check if path still contains encoded characters (indicates need for additional decoding)
-    if (hierarchyPath.includes('%')) {
-      try {
-        const furtherDecoded = decodeURIComponent(hierarchyPath);
-        hierarchyPath = furtherDecoded;
-        console.log(`[DEBUG] Applied additional decoding to GET: ${hierarchyPath}`);
-      } catch (e) {
-        // Keep original if decode fails
-      }
-    }
+    // Normalize the path to handle any level of URL encoding
+    hierarchyPath = normalizePath(hierarchyPath);
     
     const pathParts = hierarchyPath.split('/').filter(part => part);
     
@@ -148,6 +141,7 @@ export async function handleIndexPROPFIND(
     // Root hierarchy - return hierarchical folder structure
     const hierarchicalFolders = await getHierarchicalFolders();
     const xmlResponse = generateIndexContentXML(pathname, hierarchicalFolders, isDepthZero, 'Hierarchy');
+    console.log(`[DEBUG] Root hierarchy XML response:`, xmlResponse.substring(0, 500) + '...');
     res.writeHead(207, {
       'Content-Type': 'application/xml; charset=utf-8',
       'Access-Control-Allow-Origin': '*'
@@ -155,18 +149,10 @@ export async function handleIndexPROPFIND(
     res.end(xmlResponse);
   } else {
     // Subfolder in hierarchy - get folder by hierarchical path
-    let hierarchyPath = decodeURIComponent(pathname.substring(11).replace(/\/$/, '')); // Remove '/hierarchy/' prefix
+    let hierarchyPath = pathname.substring(11).replace(/\/$/, ''); // Remove '/hierarchy/' prefix
     
-    // Check if path still contains encoded characters (indicates need for additional decoding)
-    if (hierarchyPath.includes('%')) {
-      try {
-        const furtherDecoded = decodeURIComponent(hierarchyPath);
-        hierarchyPath = furtherDecoded;
-        console.log(`[DEBUG] Applied additional decoding: ${hierarchyPath}`);
-      } catch (e) {
-        // Keep original if decode fails
-      }
-    }
+    // Normalize the path to handle any level of URL encoding
+    hierarchyPath = normalizePath(hierarchyPath);
     
     const folderPath = '/' + hierarchyPath;
     
@@ -187,6 +173,7 @@ export async function handleIndexPROPFIND(
     // For folder content, pass clean base path and children for proper display
     const basePath = `/hierarchy/${hierarchyPath}`;
     const xmlResponse = generateIndexContentXML(basePath, folder.children || [], isDepthZero, folder.name);
+    console.log(`[DEBUG] Hierarchy XML response for ${basePath}:`, xmlResponse.substring(0, 500) + '...');
     res.writeHead(207, {
       'Content-Type': 'application/xml; charset=utf-8',
       'Access-Control-Allow-Origin': '*'

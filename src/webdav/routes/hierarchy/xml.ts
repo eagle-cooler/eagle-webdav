@@ -3,7 +3,7 @@
  * Handles hierarchical folder structure XML generation
  */
 
-import { escapeXML, generateHref } from '../../xmlUtils';
+import { escapeXML, generateHrefPath } from '../../xmlUtils';
 
 /**
  * Generates XML content for hierarchical folder listings in hierarchy route
@@ -22,7 +22,7 @@ export function generateIndexContentXML(
   const responses: string[] = [];
   
   // First response: The folder itself
-  const folderHref = generateHref(requestPath);
+  const folderHref = generateHrefPath(requestPath);
   responses.push(`
   <D:response>
     <D:href>${folderHref}</D:href>
@@ -49,6 +49,14 @@ ${responses.join('')}
   // Add child items (folders and files)
   for (const item of items) {
     try {
+      console.log(`[DEBUG] Processing hierarchy item:`, { name: item.name, hasChildren: !!item.children, hasSize: !!item.size, id: item.id });
+      
+      // Skip if this item has the same name as the current folder (prevent self-reference)
+      if (item.name === displayName) {
+        console.log(`[DEBUG] Skipping self-reference item: ${item.name}`);
+        continue;
+      }
+      
       // Construct the item path based on the request path and item
       let itemPath: string;
       
@@ -72,7 +80,9 @@ ${responses.join('')}
         }
       }
       
-      const itemHref = generateHref(itemPath);
+      const itemHref = generateHrefPath(itemPath);
+      console.log(`[DEBUG] Generated hierarchy item href: ${itemPath} for item: ${item.name}`);
+      console.log(`[DEBUG] Generated hierarchy href path: ${itemHref}`);
       
       // Check if it's a file (has size property) vs folder (has children property)
       if (item.children !== undefined) {
@@ -137,7 +147,7 @@ ${responses.join('')}
  * @returns WebDAV XML response string
  */
 export function generateIndexFilePROPFIND(requestPath: string, file: any): string {
-  const fileHref = generateHref(requestPath);
+  const fileHref = generateHrefPath(requestPath);
   const filename = escapeXML(file.name + (file.ext ? '.' + file.ext : ''));
   const mimeType = file.mimeType || 'application/octet-stream';
   const fileSize = file.size || 0;
