@@ -66,7 +66,7 @@ async function handleHierarchyFileRequest(
 ): Promise<void> {
   console.log(`[DEBUG] Hierarchy file request - Folder: "${folderPath}", Filename: "${filename}"`);
   
-  const folder = await getFolderByPath(folderPath);
+  const folder = await getFolderByPath(folderPath, false); // Only need files for serving
   if (!folder) {
     console.log(`[DEBUG] Folder not found: ${folderPath}`);
     sendResponse(res, 404, { error: 'Folder not found' });
@@ -158,7 +158,7 @@ export async function handleIndexPROPFIND(
     
     console.log(`[DEBUG] Looking for hierarchical folder: ${folderPath}`);
     
-    const folder = await getFolderByPath(folderPath);
+    const folder = await getFolderByPath(folderPath, true); // Include subfolders for PROPFIND
     if (!folder) {
       console.log(`[DEBUG] Folder not found: ${folderPath}`);
       const errorXML = '<?xml version="1.0" encoding="utf-8"?><D:error xmlns:D="DAV:"><D:response><D:status>HTTP/1.1 404 Not Found</D:status></D:response></D:error>';

@@ -29,16 +29,62 @@ export async function handle{Name}PROPFIND(
 ```
 
 ### Current Routes
-- **`/folders/`**: Folder navigation + file serving
-- **`/allItems/`**: All items browsing + file serving  
-- **`/files/`**: Direct file access by ID
-- **`/hierarchy/`**: Hierarchical folder navigation + file serving
+- **`/folders/`**: Flat folder navigation (no subfolder copying)
+- **`/hierarchy/`**: Hierarchical navigation (full folder copying support)
+- **`/allItems/`**: All items browsing (<5000 items limit)
+- **`/files/`**: Direct file access by ID (mobile client compatible)  
 - **`/tags/`**: Tag-based browsing + file serving
 
-### Route Pattern
-Each route: `/routes/{name}/index.ts` (handlers) + `xml.ts` (WebDAV XML)
+## Adding New Root Containers - CRITICAL PROCESS
 
-**Critical**: Add new route names to root containers: `['allItems', 'folders', 'hierarchy', 'tags']`
+### Step 1: Create Route Structure
+```
+src/webdav/routes/{name}/
+├── index.ts    # Route handlers (GET + PROPFIND)
+└── xml.ts      # WebDAV XML generation
+```
+
+### Step 2: Implement Required Functions
+```typescript
+// In index.ts - REQUIRED exports
+export async function handle{Name}GET(pathname, res, sendResponse, serveFileContent)
+export async function handle{Name}PROPFIND(pathname, req, res, sendXMLResponse?)
+
+// In xml.ts - REQUIRED exports  
+export function generate{Name}XML(basePath, items, isDepthZero?, containerName?)
+```
+
+### Step 3: Register Route in Server ✅ CRITICAL
+```typescript
+// In webdav/server.ts - Add to route imports
+import { handle{Name}GET, handle{Name}PROPFIND } from './routes/{name}';
+
+// Add to route delegation in handleRequest()
+} else if (pathname.startsWith('/{name}/')) {
+  if (method === 'PROPFIND') {
+    await handle{Name}PROPFIND(pathname, req, res, this.sendXMLResponse.bind(this));
+  } else if (method === 'GET') {
+    await handle{Name}GET(pathname, res, this.sendResponse.bind(this), this.serveFileContent.bind(this));
+  }
+```
+
+### Step 4: Add to Root Containers ✅ MANDATORY
+```typescript
+// In eagleUtils.ts - Update getRootContainers()
+return [
+  { id: 'allItems', name: 'allItems', path: '/allItems', lastModified: new Date(), children: [] },
+  { id: 'folders', name: 'folders', path: '/folders', lastModified: new Date(), children: [] },
+  { id: 'hierarchy', name: 'hierarchy', path: '/hierarchy', lastModified: new Date(), children: [] },
+  { id: 'tags', name: 'tags', path: '/tags', lastModified: new Date(), children: [] },
+  { id: '{name}', name: '{name}', path: '/{name}', lastModified: new Date(), children: [] }, // ADD THIS
+];
+```
+
+### Step 5: Pattern Compliance
+- **URL Decoding**: Always use `decodeURIComponent()` for filenames
+- **XML Escaping**: Use `escapeXML()` from xmlUtils.ts  
+- **Error Handling**: Return proper HTTP status codes
+- **Eagle Integration**: Use existing eagleUtils.ts functions
 
 ## Key Utilities
 - **`eagleUtils.ts`**: Eagle API integration

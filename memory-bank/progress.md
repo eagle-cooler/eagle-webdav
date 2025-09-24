@@ -42,14 +42,20 @@
 - **Flattened Structure**: Recursive folder collection for flat navigation ✅
 - **Auto-start Logic**: Simplified Eagle event integration ✅
 - **Memory Bank**: Optimized documentation under 200-line limits ✅
+- **URL Decoding Fix**: Mobile client filename encoding support across all routes ✅
+- **Hierarchical Folder Support**: Configurable subfolder inclusion for different route behaviors ✅
+- **I18n Integration**: Multi-language support (EN/ZH_TW/ZH_CN/JA_JP) using Eagle's i18next ✅
 
 ## 📋 Proven Working Patterns
 - **URL decoding**: `decodeURIComponent(pathname.substring(N).replace(/\/$/, ''))`
+- **Filename decoding**: `decodeURIComponent(encodedFilename)` for mobile client compatibility
 - **Ghost folder prevention**: `isAlreadyEncoded()` check in `generateHrefPath()`
-- **Root containers**: Include all routes: `['allItems', 'folders', 'hierarchy', 'tags']`
+- **Root containers**: Include all routes: `['allItems', 'folders', 'hierarchy', 'tags']` ⚠️ CRITICAL
 - **Performance**: Use `eagle.item.countAll()` before bulk operations
 - **XML escaping**: Shared `xmlUtils.ts` prevents client parsing errors
 - **File serving**: Direct Eagle `item.filePath` streaming
+- **Folder behavior**: `getFolderById(id, includeSubfolders)` controls hierarchy vs flat access
+- **Route limitations**: `/folders/` flat access only, `/hierarchy/` for folder copying
 
 ## 🎯 Project Status: COMPLETE & DOCUMENTED
 All critical functionality implemented, ghost folder recursion eliminated, memory bank optimized.

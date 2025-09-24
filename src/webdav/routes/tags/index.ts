@@ -32,9 +32,10 @@ export async function handleTagsGET(
     } else if (pathParts.length >= 2) {
       // File within tag: /tags/{tagName}/{filename}
       const tagName = decodeURIComponent(pathParts[0]);
-      const filename = pathParts.slice(1).join('/'); // Handle filenames with slashes
+      const encodedFilename = pathParts.slice(1).join('/'); // Handle filenames with slashes
+      const filename = decodeURIComponent(encodedFilename); // Decode the filename
       
-      console.log(`[DEBUG] File request in tag - Tag: "${tagName}", Filename: "${filename}"`);
+      console.log(`[DEBUG] File request in tag - Tag: "${tagName}", Encoded: "${encodedFilename}", Decoded: "${filename}"`);
       
       await handleTagFileRequest(tagName, filename, res, sendResponse, serveFileContent);
     } else {

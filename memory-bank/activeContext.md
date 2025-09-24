@@ -3,6 +3,12 @@
 ## Current State ✅
 WebDAV server on port 41596 with 5 working routes: `/folders/`, `/hierarchy/`, `/allItems/`, `/files/`, `/tags/`
 
+## CRITICAL: Mobile Client Filename Support ✅ RESOLVED
+**Issue**: Android WebDAV clients sending URL-encoded filenames causing 404s
+**Root Cause**: Server not decoding URLs before matching filenames  
+**Solution**: Added proper `decodeURIComponent()` in all route handlers
+**Result**: All routes now handle encoded filenames like `%E9%AD%94%E7%8E%8B.m4a` → `魔王.m4a`
+
 ## CRITICAL FIX: Ghost Folder Issue ✅ RESOLVED
 
 **Problem**: Recursive duplicate folders (`demo video/demo video/demo video/`)
@@ -44,13 +50,27 @@ export function generateHrefPath(path: string): string {
 
 ### Mobile Client URL Support ✅
 ```typescript
-// Supports both formats
-/files/{id}           → Desktop clients (legacy)
+// Files route: Supports both formats
+/files/{id}           → Desktop clients (legacy)  
 /files/{id}/{filename} → Mobile clients (shows proper names)
 
-// Server extracts ID from first path segment
+// Server extracts ID, ignores filename
 const pathParts = pathname.substring(7).replace(/\/$/, '').split('/');
-const id = pathParts[0];
+const id = pathParts[0]; // Always use first segment as ID
+
+// All routes: Proper URL decoding for encoded filenames
+const filename = decodeURIComponent(encodedFilename); // %E9%AD%94%E7%8E%8B.m4a → 魔王.m4a
+```
+
+### Hierarchical vs Flat Folder Access ✅
+```typescript
+// getFolderById(id, includeSubfolders)
+//   includeSubfolders = true  → /hierarchy/ (full tree navigation)
+//   includeSubfolders = false → /folders/ (flat folder access only)
+
+// Folder route limitations:
+// ✅ Individual file access: /folders/folderName/file.ext
+// ❌ Folder copying: Not supported (use /hierarchy/ instead)
 ```
 
 ### Flattened Folder Structure ✅

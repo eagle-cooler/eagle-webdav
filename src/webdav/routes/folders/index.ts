@@ -31,9 +31,10 @@ export async function handleFolderGET(
   } else if (pathParts.length >= 2 && pathParts[0] && pathParts[1]) {
     // File within folder: /folders/{folderName}/{filename}
     const folderName = decodeURIComponent(pathParts[0]);
-    const filename = pathParts.slice(1).join('/'); // Handle filenames with slashes
+    const encodedFilename = pathParts.slice(1).join('/'); // Handle filenames with slashes
+    const filename = decodeURIComponent(encodedFilename); // Decode the filename
     
-    console.log(`[DEBUG] File request in folder - Folder: "${folderName}", Filename: "${filename}"`);
+    console.log(`[DEBUG] File request in folder - Folder: "${folderName}", Encoded: "${encodedFilename}", Decoded: "${filename}"`);
     
     await handleFolderFileRequest(folderName, filename, res, sendResponse, serveFileContent);
   } else {

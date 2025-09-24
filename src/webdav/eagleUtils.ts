@@ -170,7 +170,7 @@ export async function getFolderByName(name: string): Promise<EagleWebDAVFolder |
     }
     
     // Get the full folder with contents
-    return await getFolderById(foundFolder.id);
+    return await getFolderById(foundFolder.id, false); // Flat folder access, no subfolders
   } catch (error) {
     console.error(`[DEBUG] Error getting folder by name ${name}:`, error);
     return null;
@@ -182,7 +182,7 @@ export async function getFolderByName(name: string): Promise<EagleWebDAVFolder |
  * @param id The folder ID
  * @returns Eagle WebDAV folder or null if not found
  */
-export async function getFolderById(id: string): Promise<EagleWebDAVFolder | null> {
+export async function getFolderById(id: string, includeSubfolders: boolean = false): Promise<EagleWebDAVFolder | null> {
   try {
     if (typeof eagle === 'undefined') return null;
     
@@ -229,6 +229,26 @@ export async function getFolderById(id: string): Promise<EagleWebDAVFolder | nul
           // Explicitly NOT including children property to ensure it's treated as a file
         };
         children.push(fileItem);
+      }
+    }
+
+    // Add subfolders if requested
+    if (includeSubfolders) {
+      console.log(`[DEBUG] Including subfolders for folder ${id}`);
+      // Get the folder object to access its children
+      if (folder.children && Array.isArray(folder.children)) {
+        console.log(`[DEBUG] Found ${folder.children.length} subfolders`);
+        for (const subfolder of folder.children) {
+          // Add subfolder as a folder item (without recursively loading its contents)
+          const folderItem = {
+            id: subfolder.id,
+            name: subfolder.name,
+            path: `/hierarchy/${subfolder.name}`,
+            lastModified: new Date(subfolder.createdAt),
+            children: [] // Empty children to avoid deep recursion
+          };
+          children.push(folderItem);
+        }
       }
     }
 
@@ -373,8 +393,8 @@ async function convertFoldersToWebDAV(folders: any[]): Promise<EagleWebDAVFolder
   
   for (const folder of folders) {
     try {
-      // Get folder contents (files)
-      const folderContents = await getFolderById(folder.id);
+      // Get folder contents (files and subfolders for hierarchy)
+      const folderContents = await getFolderById(folder.id, true);
       const children: (EagleWebDAVFile | EagleWebDAVFolder)[] = [];
       
       // Add files from this folder
@@ -427,7 +447,7 @@ function buildHierarchicalPath(folder: any, parentPath: string = ''): string {
  * @param path The hierarchical path (e.g., '/folder1/subfolder2')
  * @returns Eagle WebDAV folder or null if not found
  */
-export async function getFolderByPath(path: string): Promise<EagleWebDAVFolder | null> {
+export async function getFolderByPath(path: string, includeSubfolders: boolean = true): Promise<EagleWebDAVFolder | null> {
   try {
     if (typeof eagle === 'undefined') return null;
     
@@ -494,19 +514,21 @@ export async function getFolderByPath(path: string): Promise<EagleWebDAVFolder |
     }
     
     // Get the full folder with contents
-    const folderContents = await getFolderById(targetFolder.id);
+    const folderContents = await getFolderById(targetFolder.id, includeSubfolders);
     if (!folderContents) {
       return null;
     }
 
-    // For hierarchy navigation, only include FILES, not subfolders
-    // This prevents ghost folder issues and keeps hierarchy navigation clean
+    // Include files and optionally subfolders based on the includeSubfolders parameter
     const children: (EagleWebDAVFile | EagleWebDAVFolder)[] = [];
     
     if (folderContents.children) {
       for (const item of folderContents.children) {
-        // Only add files (items with size property), not folders (items with children property)
-        if ('size' in item && item.size !== undefined && !('children' in item)) {
+        if ('size' in item && item.size !== undefined) {
+          // Always include files
+          children.push(item);
+        } else if (includeSubfolders && 'children' in item) {
+          // Include subfolders only if requested
           children.push(item);
         }
       }

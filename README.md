@@ -16,8 +16,8 @@ A background service plugin for Eagle that exposes your Eagle library content vi
 
 ### 📁 **Library Access**
 - **All Items**: Browse all items in your Eagle library (✅ performance-optimized for <5000 items)
-- **Folders**: Navigate your Eagle folder structure with flattened hierarchy (✅ all folders accessible)
-- **Hierarchy**: Hierarchical folder navigation preserving parent-child relationships (✅ implemented)
+- **Folders**: Navigate your Eagle folder structure with flattened hierarchy (✅ all folders accessible, ⚠️ folder copying not supported - use Hierarchy route)
+- **Hierarchy**: Hierarchical folder navigation preserving parent-child relationships (✅ implemented, supports folder copying)
 - **Tags**: Browse items by tags with full tag support (✅ implemented)
 - **Files**: Direct file access by Eagle ID with mobile client compatibility (✅ implemented)
 - **File Downloads**: Download original files with proper extensions and metadata
@@ -69,8 +69,8 @@ Use any WebDAV client app with:
 ### Available Paths
 - `/` - Root directory with main containers
 - `/allItems/` - All items in your library (if ≤5000 items) ✅
-- `/folders/` - Browse by Eagle folders (flattened structure) ✅
-- `/hierarchy/` - Hierarchical folder navigation ✅
+- `/folders/` - Browse by Eagle folders (flattened structure) ✅ ⚠️ Individual file access only, folder copying not supported
+- `/hierarchy/` - Hierarchical folder navigation ✅ Full folder copying support
 - `/tags/` - Browse by tags with full tag support ✅
 - `/files/{id}/` - Direct file access by Eagle ID ✅
 - `/files/{id}/{filename}` - Mobile client compatible URLs ✅
